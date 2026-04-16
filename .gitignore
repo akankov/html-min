@@ -1,0 +1,14 @@
+# composer
+vendor
+composer.lock
+
+# php (phpunit)
+build/
+.phpunit.result.cache
+
+.php-cs-fixer.cache
+.phpstan.cache
+.phpunit.cache
+
+# ide
+.idea
