@@ -1,7 +1,8 @@
 [![CI](https://github.com/akankov/html-min/actions/workflows/ci.yml/badge.svg)](https://github.com/akankov/html-min/actions/workflows/ci.yml)
-[![Latest Stable Version](https://poser.pugx.org/akankov/html-min/v/stable)](https://packagist.org/packages/akankov/html-min)
-[![Total Downloads](https://poser.pugx.org/akankov/html-min/downloads)](https://packagist.org/packages/akankov/html-min)
-[![License](https://poser.pugx.org/akankov/html-min/license)](LICENSE)
+[![Latest Stable Version](http://poser.pugx.org/akankov/html-min/v)](https://packagist.org/packages/akankov/html-min)
+[![Monthly Downloads](http://poser.pugx.org/akankov/html-min/d/monthly)](https://packagist.org/packages/akankov/html-min)
+[![Dependents](http://poser.pugx.org/akankov/html-min/dependents)](https://packagist.org/packages/akankov/html-min)
+[![License](http://poser.pugx.org/akankov/html-min/license)](https://packagist.org/packages/akankov/html-min)
 
 # html-min
 
