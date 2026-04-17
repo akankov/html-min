@@ -39,7 +39,7 @@ final class HtmlParser
      *
      * @var array<string, true>
      */
-    private const VOID_TAGS = [
+    private const array VOID_TAGS = [
         'area'   => true,
         'base'   => true,
         'br'     => true,
@@ -63,7 +63,7 @@ final class HtmlParser
      *
      * @var array<string, string>
      */
-    private const URL_CHAR_PLACEHOLDERS = [
+    private const array URL_CHAR_PLACEHOLDERS = [
         '[' => '____SIMPLE_HTML_DOM__VOKU__SQUARE_BRACKET_LEFT____',
         ']' => '____SIMPLE_HTML_DOM__VOKU__SQUARE_BRACKET_RIGHT____',
         '{' => '____SIMPLE_HTML_DOM__VOKU__BRACKET_LEFT____',
@@ -76,7 +76,7 @@ final class HtmlParser
      *
      * @var array<string, string>
      */
-    private const ENTITY_CHAR_PLACEHOLDERS = [
+    private const array ENTITY_CHAR_PLACEHOLDERS = [
         '&' => '____SIMPLE_HTML_DOM__VOKU__AMP____',
         '|' => '____SIMPLE_HTML_DOM__VOKU__PIPE____',
         '+' => '____SIMPLE_HTML_DOM__VOKU__PLUS____',
@@ -88,17 +88,17 @@ final class HtmlParser
      * Special "<html ⚡" marker (Google AMP): libxml doesn't like raw "⚡"
      * bytes in tag names. Replaced with a placeholder attribute.
      */
-    private const AMP_PLACEHOLDER_SEARCH  = '<html ⚡';
-    private const AMP_PLACEHOLDER_REPLACE = '<html ____SIMPLE_HTML_DOM__VOKU__GOOGLE_AMP____="true"';
+    private const string AMP_PLACEHOLDER_SEARCH  = '<html ⚡';
+    private const string AMP_PLACEHOLDER_REPLACE = '<html ____SIMPLE_HTML_DOM__VOKU__GOOGLE_AMP____="true"';
 
     /**
      * Prefix for custom placeholder tags that wrap broken HTML chunks so they
      * survive the DOM round-trip unmodified. Uses a hyphen-safe custom-element
      * name compatible with libxml2 ≥ 2.9.14.
      */
-    private const BROKEN_HTML_PLACEHOLDER = 'htmlmin-broken-html-';
+    private const string BROKEN_HTML_PLACEHOLDER = 'htmlmin-broken-html-';
 
-    private const SPECIAL_SCRIPT_TAG = 'htmlmin-special-script';
+    private const string SPECIAL_SCRIPT_TAG = 'htmlmin-special-script';
 
     /**
      * Extra text-replacement table populated by preprocessing (keepBrokenHtml,
@@ -155,10 +155,6 @@ final class HtmlParser
         if ($keepBrokenHtml) {
             $html = self::rewriteBrokenHtml(trim($html));
         }
-
-        $isDOMDocumentCreatedWithoutWrapper = !str_contains($html, '<')
-            || !str_starts_with(ltrim($html), '<')  ;
-        $isDOMDocumentCreatedWithCommentWrapper = str_starts_with(ltrim($html), '<!--')  ;
         $isDOMDocumentCreatedWithoutHtmlWrapper = !str_contains($html, '<html ')
             && !str_contains($html, '<html>')  ;
         $isDOMDocumentCreatedWithoutBodyWrapper = !str_contains($html, '<body ')
@@ -205,29 +201,15 @@ final class HtmlParser
             }
         }
 
-        if (str_contains($html, '<svg')) {
+        if (str_contains((string) $html, '<svg')) {
             self::keepSpecialSvgTags($html);
-        }
-
-        $isDOMDocumentCreatedWithMultiRoot = false;
-        if ($isDOMDocumentCreatedWithoutHtmlWrapper && $isDOMDocumentCreatedWithoutBodyWrapper) {
-            if (substr_count($html, '</') >= 2) {
-                $regexForMultiRootDetection = '#<(.*)>.*?</(\1)>#su';
-                preg_match($regexForMultiRootDetection, $html, $matches);
-                if (($matches[0] ?? '') !== $html) {
-                    $htmlTmp = preg_replace($regexForMultiRootDetection, '', $html);
-                    if ($htmlTmp !== null && trim($htmlTmp) === '') {
-                        $isDOMDocumentCreatedWithMultiRoot = true;
-                    }
-                }
-            }
         }
 
         // Apply placeholder wrapping to prevent libxml from collapsing
         // "<br>" into "<br/>" etc. — same as voku.
         $html = str_replace(
-            array_map(static fn ($e) => '<' . $e . '>', array_keys(self::VOID_TAGS)),
-            array_map(static fn ($e) => '<' . $e . '/>', array_keys(self::VOID_TAGS)),
+            array_map(static fn (string $e): string => '<' . $e . '>', array_keys(self::VOID_TAGS)),
+            array_map(static fn (string $e): string => '<' . $e . '/>', array_keys(self::VOID_TAGS)),
             $html,
         );
 
@@ -304,7 +286,7 @@ final class HtmlParser
 
             if (!empty($linksOld[1])) {
                 $linksOld = $linksOld[1];
-                foreach ((array) $linksOld as $linkKey => $linkOld) {
+                foreach ($linksOld as $linkKey => $linkOld) {
                     $linksNew[$linkKey] = str_replace(
                         array_keys(self::URL_CHAR_PLACEHOLDERS),
                         array_values(self::URL_CHAR_PLACEHOLDERS),
@@ -451,8 +433,8 @@ final class HtmlParser
             return;
         }
 
-        while ($el->firstChild !== null) {
-            $el->removeChild($el->firstChild);
+        while (($firstChild = $el->firstChild) !== null) {
+            $el->removeChild($firstChild);
         }
 
         if ($html === '') {
@@ -486,11 +468,9 @@ final class HtmlParser
     public static function getAllAttributes(DOMElement $el): array
     {
         $out = [];
-        if ($el->attributes !== null) {
-            /** @var DOMAttr $attr */
-            foreach ($el->attributes as $attr) {
-                $out[$attr->name] = $attr->value;
-            }
+        /** @var DOMAttr $attr */
+        foreach ($el->attributes as $attr) {
+            $out[$attr->name] = $attr->value;
         }
 
         return $out;
@@ -509,7 +489,7 @@ final class HtmlParser
         }
 
         if (str_contains($selector, ',')) {
-            $parts = array_filter(array_map('trim', explode(',', $selector)));
+            $parts = array_filter(array_map(trim(...), explode(',', $selector)));
             $queries = [];
             foreach ($parts as $part) {
                 $queries[] = str_starts_with($part, '//') ? $part : './/' . $part;
@@ -530,7 +510,7 @@ final class HtmlParser
         $regExSpecialScript = '/<script(?<attr>[^>]*?)>(?<content>.*)<\/script>/isU';
         $htmlTmp = preg_replace_callback(
             $regExSpecialScript,
-            static function ($scripts) {
+            static function (array $scripts): string {
                 if (empty($scripts['content'])) {
                     return $scripts[0];
                 }
@@ -557,13 +537,13 @@ final class HtmlParser
     private static function keepSpecialScriptTags(string &$html, array $specialScriptTags, array $templateLogicSyntax): void
     {
         $tags = implode('|', array_map(
-            static fn ($value) => preg_quote($value, '/'),
+            static fn (string $value): string => preg_quote($value, '/'),
             $specialScriptTags,
         ));
 
         $result = preg_replace_callback(
             '/(?<start>(<script [^>]*type=["\']?(?:' . $tags . ')+[^>]*>))(?<innerContent>.*)(?<end><\/script>)/isU',
-            static function ($matches) use ($templateLogicSyntax): string {
+            static function (array $matches) use ($templateLogicSyntax): string {
                 foreach ($templateLogicSyntax as $logic) {
                     if (str_contains($matches['innerContent'], $logic)) {
                         $matches['innerContent'] = str_replace('<\/', '</', $matches['innerContent']);
@@ -597,7 +577,7 @@ final class HtmlParser
         $regExSpecialSvg = '/\((["\'])?(?<start>data:image\/svg.*)<svg(?<attr>[^>]*?)>(?<content>.*)<\/svg>\1\)/isU';
         $htmlTmp = preg_replace_callback(
             $regExSpecialSvg,
-            static function ($svgs) {
+            static function (array $svgs): string {
                 if (empty($svgs['content'])) {
                     return $svgs[0];
                 }
@@ -640,7 +620,7 @@ final class HtmlParser
             $original = $html;
             $html = (string) preg_replace_callback(
                 '/(?<start>[^<]*)?(?<broken>(?:<\/\w+(?:\s+\w+="[^"]+")*+[^<]+>)+)(?<end>.*)/u',
-                static function ($m): string {
+                static function (array $m): string {
                     $m['broken'] = str_replace(
                         ['°lt/_simple_html_dom__voku_°', '°lt_simple_html_dom__voku_°', '°gt_simple_html_dom__voku_°'],
                         ['</', '<', '>'],

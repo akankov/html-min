@@ -8,6 +8,7 @@ use Akankov\HtmlMin\Contract\DomObserver;
 use Akankov\HtmlMin\Contract\HtmlMinInterface;
 use Akankov\HtmlMin\Internal\HtmlParser;
 use DOMElement;
+use Override;
 
 /**
  * Optimize HTML attributes. Protected HTML remains protected.
@@ -34,7 +35,10 @@ final class OptimizeAttributes implements DomObserver
 
     /**
      * Receive dom elements before the minification.
+     *
+     * @phan-suppress PhanUnusedPublicFinalMethodParameter
      */
+    #[Override]
     public function domElementBeforeMinification(DOMElement $element, HtmlMinInterface $htmlMin): void
     {
     }
@@ -42,6 +46,7 @@ final class OptimizeAttributes implements DomObserver
     /**
      * Receive dom elements after the minification.
      */
+    #[Override]
     public function domElementAfterMinification(DOMElement $element, HtmlMinInterface $htmlMin): void
     {
         $attributes = HtmlParser::getAllAttributes($element);
@@ -331,11 +336,7 @@ final class OptimizeAttributes implements DomObserver
         return $attrValue;
     }
 
-    /**
-     * @param string $attrName
-     * @param string $attrValue
-     */
-    private function sortCssClassNames($attrName, $attrValue): string
+    private function sortCssClassNames(int|string $attrName, string $attrValue): string
     {
         if ($attrName !== 'class' || !$attrValue) {
             return $attrValue;

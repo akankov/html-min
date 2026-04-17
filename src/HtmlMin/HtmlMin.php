@@ -16,6 +16,7 @@ use DOMElement;
 use DOMNode;
 use DOMText;
 use InvalidArgumentException;
+use Override;
 use SplObjectStorage;
 
 use const XML_TEXT_NODE;
@@ -382,6 +383,7 @@ class HtmlMin implements HtmlMinInterface
     /**
      * @return string[]
      */
+    #[Override]
     public function getLocalDomains(): array
     {
         return $this->localDomains;
@@ -820,7 +822,7 @@ class HtmlMin implements HtmlMinInterface
                         if (
                             $emptyStringTmp !== 'last_was_empty'
                             &&
-                            substr($html, -1) !== ' '
+                            !str_ends_with($html, ' ')
                         ) {
                             $html = rtrim($html);
 
@@ -852,7 +854,7 @@ class HtmlMin implements HtmlMinInterface
                             (
                                 $emptyStringTmp !== 'last_was_empty'
                                 &&
-                                substr($html, -1) !== ' '
+                                !str_ends_with($html, ' ')
                             )
                         ) {
                             $html = rtrim($html);
@@ -912,141 +914,172 @@ class HtmlMin implements HtmlMinInterface
     /**
      * @return string[]
      */
+    #[Override]
     public function getDomainsToRemoveHttpPrefixFromAttributes(): array
     {
         return $this->domainsToRemoveHttpPrefixFromAttributes;
     }
 
+    #[Override]
     public function isDoOptimizeAttributes(): bool
     {
         return $this->doOptimizeAttributes;
     }
 
+    #[Override]
     public function isDoOptimizeViaHtmlDomParser(): bool
     {
         return $this->doOptimizeViaHtmlDomParser;
     }
 
+    #[Override]
     public function isDoRemoveComments(): bool
     {
         return $this->doRemoveComments;
     }
 
+    #[Override]
     public function isDoRemoveDefaultAttributes(): bool
     {
         return $this->doRemoveDefaultAttributes;
     }
 
+    #[Override]
     public function isDoRemoveDeprecatedAnchorName(): bool
     {
         return $this->doRemoveDeprecatedAnchorName;
     }
 
+    #[Override]
     public function isDoRemoveDeprecatedScriptCharsetAttribute(): bool
     {
         return $this->doRemoveDeprecatedScriptCharsetAttribute;
     }
 
+    #[Override]
     public function isDoRemoveDeprecatedTypeFromScriptTag(): bool
     {
         return $this->doRemoveDeprecatedTypeFromScriptTag;
     }
 
+    #[Override]
     public function isDoRemoveDeprecatedTypeFromStylesheetLink(): bool
     {
         return $this->doRemoveDeprecatedTypeFromStylesheetLink;
     }
 
+    #[Override]
     public function isDoRemoveDeprecatedTypeFromStyleAndLinkTag(): bool
     {
         return $this->doRemoveDeprecatedTypeFromStyleAndLinkTag;
     }
 
+    #[Override]
     public function isDoRemoveDefaultMediaTypeFromStyleAndLinkTag(): bool
     {
         return $this->doRemoveDefaultMediaTypeFromStyleAndLinkTag;
     }
 
+    #[Override]
     public function isDoRemoveDefaultTypeFromButton(): bool
     {
         return $this->doRemoveDefaultTypeFromButton;
     }
 
+    #[Override]
     public function isDoRemoveEmptyAttributes(): bool
     {
         return $this->doRemoveEmptyAttributes;
     }
 
+    #[Override]
     public function isDoRemoveHttpPrefixFromAttributes(): bool
     {
         return $this->doRemoveHttpPrefixFromAttributes;
     }
 
+    #[Override]
     public function isDoRemoveHttpsPrefixFromAttributes(): bool
     {
         return $this->doRemoveHttpsPrefixFromAttributes;
     }
 
+    #[Override]
     public function isdoKeepHttpAndHttpsPrefixOnExternalAttributes(): bool
     {
         return $this->doKeepHttpAndHttpsPrefixOnExternalAttributes;
     }
 
+    #[Override]
     public function isDoMakeSameDomainsLinksRelative(): bool
     {
         return $this->doMakeSameDomainsLinksRelative;
     }
 
+    #[Override]
     public function isDoRemoveOmittedHtmlTags(): bool
     {
         return $this->doRemoveOmittedHtmlTags;
     }
 
+    #[Override]
     public function isDoRemoveOmittedQuotes(): bool
     {
         return $this->doRemoveOmittedQuotes;
     }
 
+    #[Override]
     public function isDoRemoveSpacesBetweenTags(): bool
     {
         return $this->doRemoveSpacesBetweenTags;
     }
 
+    #[Override]
     public function isDoRemoveValueFromEmptyInput(): bool
     {
         return $this->doRemoveValueFromEmptyInput;
     }
 
+    #[Override]
     public function isDoRemoveWhitespaceAroundTags(): bool
     {
         return $this->doRemoveWhitespaceAroundTags;
     }
 
+    #[Override]
     public function isDoSortCssClassNames(): bool
     {
         return $this->doSortCssClassNames;
     }
 
+    #[Override]
     public function isDoSortHtmlAttributes(): bool
     {
         return $this->doSortHtmlAttributes;
     }
 
+    #[Override]
     public function isDoSumUpWhitespace(): bool
     {
         return $this->doSumUpWhitespace;
     }
 
+    #[Override]
     public function isHTML4(): bool
     {
         return $this->isHTML4;
     }
 
+    #[Override]
     public function isXHTML(): bool
     {
         return $this->isXHTML;
     }
 
+    /**
+     * @phan-suppress PhanUnusedPublicMethodParameter
+     */
+    #[Override]
     public function minify(string $html, bool $multiDecodeNewHtmlEntity = false): string
     {
         if (!isset($html[0])) {
@@ -1070,7 +1103,7 @@ class HtmlMin implements HtmlMinInterface
         // -------------------------------------------------------------------------
 
         if ($this->doOptimizeViaHtmlDomParser) {
-            $html = $this->minifyHtmlDom($html, $multiDecodeNewHtmlEntity);
+            $html = $this->minifyHtmlDom($html);
         }
 
         // -------------------------------------------------------------------------
@@ -1081,7 +1114,7 @@ class HtmlMin implements HtmlMinInterface
         if (str_contains($html, ' ')) {
             $htmlCleaned = preg_replace_callback(
                 '#<([^/\s<>!]+)(?:\s+([^<>]*?)\s*|\s*)(/?)>#',
-                static fn ($matches) => '<' . $matches[1] . preg_replace('#([^\s=]+)(=([\'"]?)(.*?)\3)?(\s+|$)#su', ' $1$2', $matches[2]) . $matches[3] . '>',
+                static fn ($matches): string => '<' . $matches[1] . preg_replace('#([^\s=]+)(=([\'"]?)(.*?)\3)?(\s+|$)#su', ' $1$2', $matches[2]) . $matches[3] . '>',
                 $html,
             );
             if ($htmlCleaned !== null) {
@@ -1089,7 +1122,7 @@ class HtmlMin implements HtmlMinInterface
             } else {
                 $htmlCleaned = (string) preg_replace_callback(
                     '#<([^/\s<>!]+)(?:\s+([^<>]*)\s*|\s*)(/?)>#',
-                    static fn ($matches) => '<' . $matches[1] . preg_replace('#([^\s=]+)(=([\'"]?)(.*?)\3)?(\s+|$)#su', ' $1$2', $matches[2]) . $matches[3] . '>',
+                    static fn ($matches): string => '<' . $matches[1] . preg_replace('#([^\s=]+)(=([\'"]?)(.*?)\3)?(\s+|$)#su', ' $1$2', $matches[2]) . $matches[3] . '>',
                     $html,
                 );
                 $html = $htmlCleaned;
@@ -1111,7 +1144,7 @@ class HtmlMin implements HtmlMinInterface
         if (str_contains($html, $this->protectedChildNodesHelper)) {
             $html = (string) preg_replace_callback(
                 '/<(?<element>' . $this->protectedChildNodesHelper . ')(?<attributes> [^>]*)?>(?<value>.*?)<\/' . $this->protectedChildNodesHelper . '>/',
-                [$this, 'restoreProtectedHtml'],
+                $this->restoreProtectedHtml(...),
                 $html,
             );
         }
@@ -1255,7 +1288,7 @@ class HtmlMin implements HtmlMinInterface
         }
 
         foreach ($this->specialHtmlCommentsEndingWith as $search) {
-            if (substr($comment, -\strlen($search)) === $search) {
+            if (str_ends_with($comment, $search)) {
                 return true;
             }
         }
@@ -1263,7 +1296,7 @@ class HtmlMin implements HtmlMinInterface
         return false;
     }
 
-    private function minifyHtmlDom(string $html, bool $multiDecodeNewHtmlEntity): string
+    private function minifyHtmlDom(string $html): string
     {
         // Remove content before <!DOCTYPE.*> because otherwise the DOMDocument can not handle the input.
         if (stripos($html, '<!DOCTYPE') !== false) {
@@ -1379,7 +1412,7 @@ class HtmlMin implements HtmlMinInterface
             }
 
             $parentNode = $element->parentNode;
-            if ($parentNode !== null && $parentNode->nodeValue !== null) {
+            if ($parentNode->nodeValue !== null) {
                 $this->protectedChildNodes[$this->protected_tags_counter] = $parentNode instanceof DOMElement
                     ? HtmlParser::innerHtml($parentNode)
                     : '';
@@ -1513,7 +1546,7 @@ class HtmlMin implements HtmlMinInterface
     /**
      * @param string[] $domainsToRemoveHttpPrefixFromAttributes
      */
-    public function setDomainsToRemoveHttpPrefixFromAttributes($domainsToRemoveHttpPrefixFromAttributes): self
+    public function setDomainsToRemoveHttpPrefixFromAttributes(array $domainsToRemoveHttpPrefixFromAttributes): self
     {
         $this->domainsToRemoveHttpPrefixFromAttributes = $domainsToRemoveHttpPrefixFromAttributes;
 
@@ -1581,6 +1614,7 @@ class HtmlMin implements HtmlMinInterface
     public function overwriteTemplateLogicSyntaxInSpecialScriptTags(array $templateLogicSyntaxInSpecialScriptTags): self
     {
         foreach ($templateLogicSyntaxInSpecialScriptTags as $tmp) {
+            // @phpstan-ignore function.alreadyNarrowedType
             if (!\is_string($tmp)) {
                 throw new InvalidArgumentException('setTemplateLogicSyntaxInSpecialScriptTags only allows string[]');
             }
@@ -1598,6 +1632,7 @@ class HtmlMin implements HtmlMinInterface
     public function overwriteSpecialScriptTags(array $specialScriptTags): self
     {
         foreach ($specialScriptTags as $tag) {
+            // @phpstan-ignore function.alreadyNarrowedType
             if (!\is_string($tag)) {
                 throw new InvalidArgumentException('SpecialScriptTags only allows string[]');
             }

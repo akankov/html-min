@@ -25,10 +25,11 @@
     "ext-mbstring": "*"
   },
   "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3.65",
+    "phan/phan": "^6.0",
+    "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^12.0",
-    "phpstan/phpstan": "^1.12",
-    "rector/rector": "^1.2",
-    "friendsofphp/php-cs-fixer": "^3.65"
+    "rector/rector": "^2.0"
   },
   "autoload": {
     "psr-4": {
@@ -43,7 +44,8 @@
   "config": {
     "platform": {
       "php": "8.3"
-    }
+    },
+    "sort-packages": true
   },
   "extra": {
     "branch-alias": {

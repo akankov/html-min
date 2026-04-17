@@ -64,6 +64,27 @@ jobs:
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse --no-progress
 
+  phan:
+    name: Phan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          coverage: none
+          extensions: dom, libxml, mbstring, ast
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Run Phan
+        run: vendor/bin/phan --no-progress-bar
+
   code-style:
     name: PHP-CS-Fixer
     runs-on: ubuntu-latest
