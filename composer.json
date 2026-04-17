@@ -16,11 +16,6 @@
       "name": "Alex Kankov",
       "email": "akankov@gmail.com",
       "role": "Maintainer"
-    },
-    {
-      "name": "Lars Moelleken",
-      "homepage": "https://www.moelleken.org/",
-      "role": "Original author"
     }
   ],
   "require": {
