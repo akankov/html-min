@@ -1,117 +1,138 @@
-[![Build Status](https://github.com/akankov/html-min/actions/workflows/ci.yml/badge.svg?branch=rebrand/v1)](https://github.com/akankov/html-min/actions)
+[![CI](https://github.com/akankov/html-min/actions/workflows/ci.yml/badge.svg)](https://github.com/akankov/html-min/actions/workflows/ci.yml)
 [![Latest Stable Version](https://poser.pugx.org/akankov/html-min/v/stable)](https://packagist.org/packages/akankov/html-min)
 [![Total Downloads](https://poser.pugx.org/akankov/html-min/downloads)](https://packagist.org/packages/akankov/html-min)
-[![License](https://poser.pugx.org/akankov/html-min/license)](https://packagist.org/packages/akankov/html-min)
+[![License](https://poser.pugx.org/akankov/html-min/license)](LICENSE)
 
-# HtmlMin: HTML Compressor and Minifier for PHP
+# html-min
 
-> Maintained fork of [voku/HtmlMin](https://github.com/voku/HtmlMin). See [UPGRADE-FROM-VOKU.md](UPGRADE-FROM-VOKU.md) for migration notes.
+A fast HTML5 compressor and minifier for PHP. Strips redundant whitespace, comments,
+optional tags, and default attributes, then sorts what's left so your gzip layer has
+less work to do.
 
-### Description
+Built on native `\DOMDocument` — no third-party DOM dependencies.
 
-HtmlMin is a fast, easy-to-use PHP library that minifies HTML5 source by removing extra whitespace, comments, and unneeded characters without breaking content structure. It also prepares HTML for better gzip results by sorting attributes and CSS class names.
+## Requirements
 
-**Supported PHP versions:** 8.3, 8.4, 8.5. If you need PHP 7.x or 8.0–8.2 runtime support, use upstream `voku/html-min:^4.5`.
+- PHP **8.3**, 8.4, or 8.5
+- ext-dom, ext-libxml, ext-mbstring
 
-### Install via "composer require"
+## Installation
 
-```shell
+```bash
 composer require akankov/html-min
 ```
 
-### Quick Start
+## Usage
 
 ```php
 use Akankov\HtmlMin\HtmlMin;
 
-$html = "
+$html = <<<HTML
 <html>
-  \r\n\t
   <body>
-    <ul style=''>
-      <li style='display: inline;' class='foo'>
-        \xc3\xa0
-      </li>
-      <li class='foo' style='display: inline;'>
-        \xc3\xa1
-      </li>
+    <ul style="">
+      <li style="display: inline;" class="foo">One</li>
+      <li class="foo" style="display: inline;">Two</li>
     </ul>
   </body>
-  \r\n\t
 </html>
-";
-$htmlMin = new HtmlMin();
+HTML;
 
-echo $htmlMin->minify($html); 
-// '<html><body><ul><li class=foo style="display: inline;"> à <li class=foo style="display: inline;"> á </ul>'
+echo (new HtmlMin())->minify($html);
+// <html><body><ul><li class=foo style="display: inline;">One<li class=foo style="display: inline;">Two</ul>
 ```
 
-### Options
+Wrap any block in `<nocompress>…</nocompress>` to keep its whitespace intact.
+
+## Configuration
+
+Every option is a chainable setter. All defaults are shown — the example below
+reproduces the default configuration.
 
 ```php
+$htmlMin = (new HtmlMin())
+    // Core
+    ->doOptimizeViaHtmlDomParser(true)   // run the DOM-based pass (required for most of the flags below)
+    ->doRemoveComments(true)             // drop HTML comments (conditional comments are preserved)
+    ->doSumUpWhitespace(true)            // collapse runs of whitespace in text nodes
+    ->doRemoveWhitespaceAroundTags(false)// aggressive: also trim whitespace adjacent to block tags
+    ->doRemoveSpacesBetweenTags(false)   // aggressive: remove whitespace-only text nodes between elements
+
+    // Attribute optimization
+    ->doOptimizeAttributes(true)
+    ->doSortHtmlAttributes(true)         // canonical attribute order → better gzip
+    ->doSortCssClassNames(true)          // canonical class order → better gzip
+    ->doRemoveOmittedQuotes(true)        // class="foo" → class=foo when safe
+    ->doRemoveOmittedHtmlTags(true)      // <p>x</p> → <p>x where the closing tag is optional
+    ->doRemoveEmptyAttributes(true)
+    ->doRemoveValueFromEmptyInput(true)
+    ->doRemoveDefaultAttributes(false)   // opt-in: drop defaults like form method=get
+
+    // URL attribute trimming
+    ->doRemoveHttpPrefixFromAttributes(false)
+    ->doRemoveHttpsPrefixFromAttributes(false)
+    ->doKeepHttpAndHttpsPrefixOnExternalAttributes(false)
+    ->doMakeSameDomainsLinksRelative([])       // e.g. ['example.com'] → strip host from same-site links
+
+    // Deprecated attribute cleanup
+    ->doRemoveDeprecatedAnchorName(true)
+    ->doRemoveDeprecatedScriptCharsetAttribute(true)
+    ->doRemoveDeprecatedTypeFromScriptTag(true)
+    ->doRemoveDeprecatedTypeFromStylesheetLink(true)
+    ->doRemoveDeprecatedTypeFromStyleAndLinkTag(true)
+    ->doRemoveDefaultMediaTypeFromStyleAndLinkTag(true)
+    ->doRemoveDefaultTypeFromButton(false);
+
+echo $htmlMin->minify($html);
+```
+
+Each setter returns `$this`, so you can configure and call `minify()` in one chain.
+
+## Extending
+
+To run your own pass over every element during minification, implement
+`Akankov\HtmlMin\Contract\DomObserver` and register it:
+
+```php
+use Akankov\HtmlMin\Contract\DomObserver;
+use Akankov\HtmlMin\Contract\HtmlMinInterface;
 use Akankov\HtmlMin\HtmlMin;
 
+final class StripDataTestIds implements DomObserver
+{
+    public function notifyDomNodeManipulationEvent(\DOMElement $element, HtmlMinInterface $htmlMin): void
+    {
+        if ($element->hasAttribute('data-testid')) {
+            $element->removeAttribute('data-testid');
+        }
+    }
+}
+
 $htmlMin = new HtmlMin();
-
-/* 
- * Protected HTML (inline css / inline js / conditional comments) are still protected,
- *    no matter what settings you use.
- */
-
-$htmlMin->doOptimizeViaHtmlDomParser();               // optimize html via "HtmlDomParser()"
-$htmlMin->doRemoveComments();                         // remove default HTML comments (depends on "doOptimizeViaHtmlDomParser(true)")
-$htmlMin->doSumUpWhitespace();                        // sum-up extra whitespace from the Dom (depends on "doOptimizeViaHtmlDomParser(true)")
-$htmlMin->doRemoveWhitespaceAroundTags();             // remove whitespace around tags (depends on "doOptimizeViaHtmlDomParser(true)")
-$htmlMin->doOptimizeAttributes();                     // optimize html attributes (depends on "doOptimizeViaHtmlDomParser(true)")
-$htmlMin->doRemoveHttpPrefixFromAttributes();         // remove optional "http:"-prefix from attributes (depends on "doOptimizeAttributes(true)")
-$htmlMin->doRemoveHttpsPrefixFromAttributes();        // remove optional "https:"-prefix from attributes (depends on "doOptimizeAttributes(true)")
-$htmlMin->doKeepHttpAndHttpsPrefixOnExternalAttributes(); // keep "http:"- and "https:"-prefix for all external links 
-$htmlMin->doMakeSameDomainsLinksRelative(['example.com']); // make some links relative, by removing the domain from attributes
-$htmlMin->doRemoveDefaultAttributes();                // remove defaults (depends on "doOptimizeAttributes(true)" | disabled by default)
-$htmlMin->doRemoveDeprecatedAnchorName();             // remove deprecated anchor-jump (depends on "doOptimizeAttributes(true)")
-$htmlMin->doRemoveDeprecatedScriptCharsetAttribute(); // remove deprecated charset-attribute - the browser will use the charset from the HTTP-Header, anyway (depends on "doOptimizeAttributes(true)")
-$htmlMin->doRemoveDeprecatedTypeFromScriptTag();      // remove deprecated script-mime-types (depends on "doOptimizeAttributes(true)")
-$htmlMin->doRemoveDeprecatedTypeFromStylesheetLink(); // remove "type=text/css" for css links (depends on "doOptimizeAttributes(true)")
-$htmlMin->doRemoveDeprecatedTypeFromStyleAndLinkTag(); // remove "type=text/css" from all links and styles
-$htmlMin->doRemoveDefaultMediaTypeFromStyleAndLinkTag(); // remove "media="all" from all links and styles
-$htmlMin->doRemoveDefaultTypeFromButton();            // remove type="submit" from button tags 
-$htmlMin->doRemoveEmptyAttributes();                  // remove some empty attributes (depends on "doOptimizeAttributes(true)")
-$htmlMin->doRemoveValueFromEmptyInput();              // remove 'value=""' from empty <input> (depends on "doOptimizeAttributes(true)")
-$htmlMin->doSortCssClassNames();                      // sort css-class-names, for better gzip results (depends on "doOptimizeAttributes(true)")
-$htmlMin->doSortHtmlAttributes();                     // sort html-attributes, for better gzip results (depends on "doOptimizeAttributes(true)")
-$htmlMin->doRemoveSpacesBetweenTags();                // remove more (aggressive) spaces in the dom (disabled by default)
-$htmlMin->doRemoveOmittedQuotes();                    // remove quotes e.g. class="lall" => class=lall
-$htmlMin->doRemoveOmittedHtmlTags();                  // remove ommitted html tags e.g. <p>lall</p> => <p>lall 
+$htmlMin->attachObserverToTheDomLoop(new StripDataTestIds());
+echo $htmlMin->minify($html);
 ```
 
-PS: you can use the "nocompress"-tag to keep the html e.g.: "<nocompress>\n foobar \n</nocompress>"
-
-### Unit Test
-
-1) [Composer](https://getcomposer.org) is a prerequisite for running the tests.
-
-```
-composer require voku/html-min
-```
-
-2) The tests can be executed by running this command from the root directory:
+## Development
 
 ```bash
-./vendor/bin/phpunit
+composer install
+vendor/bin/phpunit            # tests
+vendor/bin/phpstan analyse    # static analysis (level max)
+vendor/bin/php-cs-fixer fix   # code style
 ```
 
-### Support
+CI runs the full matrix (PHP 8.3 / 8.4 / 8.5) on every push and pull request.
 
-For support and donations please visit [Github](https://github.com/voku/HtmlMin/) | [Issues](https://github.com/voku/HtmlMin/issues) | [PayPal](https://paypal.me/moelleken) | [Patreon](https://www.patreon.com/voku).
+## Migrating from voku/html-min
 
-For status updates and release announcements please visit [Releases](https://github.com/voku/HtmlMin/releases) | [Twitter](https://twitter.com/suckup_de) | [Patreon](https://www.patreon.com/voku/posts).
+This package began as a fork of [voku/HtmlMin](https://github.com/voku/HtmlMin).
+If you're upgrading from that package, see
+[UPGRADE-FROM-VOKU.md](UPGRADE-FROM-VOKU.md) for the namespace map and the one
+breaking change to the `DomObserver` interface.
 
-For professional support please contact [me](https://about.me/voku).
+## License
 
-### Thanks
+MIT — see [LICENSE](LICENSE).
 
-- Thanks to [GitHub](https://github.com) (Microsoft) for hosting the code and a good infrastructure including Issues-Managment, etc.
-- Thanks to [IntelliJ](https://www.jetbrains.com) as they make the best IDEs for PHP and they gave me an open source license for PhpStorm!
-- Thanks to [Travis CI](https://travis-ci.com/) for being the most awesome, easiest continous integration tool out there!
-- Thanks to [StyleCI](https://styleci.io/) for the simple but powerful code style check.
-- Thanks to [PHPStan](https://github.com/phpstan/phpstan) & [Psalm](https://github.com/vimeo/psalm) for really great Static analysis tools and for discovering bugs in the code!
+Originally authored by Lars Moelleken; maintained in this fork by Alex Kankov.
