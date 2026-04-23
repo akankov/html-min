@@ -1,0 +1,9 @@
+{
+    "$schema": "./vendor/phpbench/phpbench/phpbench.schema.json",
+    "runner.bootstrap": "vendor/autoload.php",
+    "runner.path": "src/Bench",
+    "runner.file_pattern": "*Bench.php",
+    "runner.retry_threshold": 5,
+    "runner.time_unit": "milliseconds",
+    "runner.output_mode": "time"
+}

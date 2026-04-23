@@ -1,0 +1,34 @@
+{
+    "name": "akankov/html-min-benchmarks",
+    "description": "Benchmark suite for akankov/html-min vs. other PHP HTML minifiers",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.3",
+        "akankov/html-min": "@dev",
+        "voku/html-min": "^4.5",
+        "wyrihaximus/html-compress": "^4.4",
+        "zaininnari/html-minifier": "^0.4",
+        "abordage/html-min": "^1.0",
+        "phpbench/phpbench": "^1.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0"
+    },
+    "repositories": [
+        { "type": "path", "url": "..", "options": { "symlink": true } }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": { "Akankov\\HtmlMinBench\\": "src/" }
+    },
+    "autoload-dev": {
+        "psr-4": { "Akankov\\HtmlMinBench\\Tests\\": "tests/" }
+    },
+    "config": {
+        "platform": { "php": "8.3" },
+        "sort-packages": true,
+        "allow-plugins": { "phpbench/phpbench": true }
+    }
+}
