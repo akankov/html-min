@@ -94,9 +94,9 @@ bench-phan: phan-image ## Run phan on benchmarks
 
 bench-quality: bench-rector bench-cs bench-phpstan bench-phan ## Run all quality tools on benchmarks
 
-quality: rector cs phpstan phan ## Run all library code quality tools (rector → fixer → phpstan → phan)
+quality: rector cs phpstan phan bench-quality ## Run all quality tools (library + benchmarks)
 
-ci: cs-check phpstan phan test-all ## Run the full CI pipeline locally
+ci: cs-check phpstan phan bench-phpstan bench-phan test-all ## Run the full CI pipeline locally
 
 clean: ## Remove vendor and cache directories
 	rm -rf vendor .phpstan.cache .phpunit.cache .php-cs-fixer.cache .phan/cache
