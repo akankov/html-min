@@ -13,3 +13,4 @@ build/
 # ide
 .idea
 .phan/cache
+CLAUDE.md
