@@ -22,4 +22,5 @@ PHP version, host, git SHA, and adapter versions are stamped into every generate
 - Every adapter runs with **default configuration**. No per-adapter tuning.
 - `abordage/html-min` is labelled "regex-based (unsafe reference)" — it skips HTML parsing,
   which is a different safety class from the other four.
+- `abordage/html-min`'s default config short-circuits if `<!DOCTYPE` isn't within the first 100 bytes of input — it returns the input unchanged. All real-world benchmark fixtures include a DOCTYPE, so this doesn't affect published numbers; fragments or DOCTYPE-less inputs would produce a misleading 1.00 ratio for this adapter.
 - Numbers are for this corpus on your hardware. Ratios between adapters are the signal.
