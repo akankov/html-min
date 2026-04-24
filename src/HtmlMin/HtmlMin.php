@@ -23,6 +23,11 @@ use const XML_TEXT_NODE;
 
 class HtmlMin implements HtmlMinInterface
 {
+    /** Inner pass for collapseAttributeWhitespace(): collapses run of spaces between attributes. */
+    private const string ATTR_WHITESPACE_PATTERN = '#([^\s=]+)(=([\'"]?)(.*?)\3)?(\s+|$)#su';
+
+    private const string ATTR_WHITESPACE_REPLACEMENT = ' $1$2';
+
     private static string $regExSpace = "/[[:space:]]{2,}|[\r\n]/u";
 
     /**
@@ -782,8 +787,14 @@ class HtmlMin implements HtmlMinInterface
 
     protected function domNodeToString(DOMNode $node): string
     {
-        // init
-        $html = '';
+        // Collect per-level output into a parts array and join once at the end:
+        // avoids the quadratic cost of `$html .= $chunk` on the ~30 KB output of
+        // large documents (wikipedia fixture). Whitespace handling that used to
+        // call `rtrim($html)` / `str_ends_with($html, ' ')` on the growing
+        // accumulator is delegated to partsEndWithSpace() / rtrimParts(), which
+        // keep the same semantics since every append is either whitespace-only
+        // or ends with non-whitespace — whitespace runs never straddle parts.
+        $parts = [];
         $emptyStringTmp = '';
 
         foreach ($node->childNodes as $child) {
@@ -794,8 +805,8 @@ class HtmlMin implements HtmlMinInterface
             }
 
             if ($child instanceof DOMElement) {
-                $html .= rtrim('<' . $child->tagName . ' ' . $this->domNodeAttributesToString($child));
-                $html .= '>' . $this->domNodeToString($child);
+                $parts[] = rtrim('<' . $child->tagName . ' ' . $this->domNodeAttributesToString($child));
+                $parts[] = '>' . $this->domNodeToString($child);
 
                 if (
                     !(
@@ -808,7 +819,7 @@ class HtmlMin implements HtmlMinInterface
                         $this->domNodeClosingTagOptional($child)
                     )
                 ) {
-                    $html .= '</' . $child->tagName . '>';
+                    $parts[] = '</' . $child->tagName . '>';
                 }
 
                 if (!$this->doRemoveWhitespaceAroundTags) {
@@ -822,16 +833,16 @@ class HtmlMin implements HtmlMinInterface
                         if (
                             $emptyStringTmp !== 'last_was_empty'
                             &&
-                            !str_ends_with($html, ' ')
+                            !self::partsEndWithSpace($parts)
                         ) {
-                            $html = rtrim($html);
+                            self::rtrimParts($parts);
 
                             if (
                                 $child->parentNode
                                 &&
                                 $child->parentNode->nodeName !== 'head'
                             ) {
-                                $html .= ' ';
+                                $parts[] = ' ';
                             }
                         }
                         $emptyStringTmp = 'is_empty';
@@ -854,30 +865,61 @@ class HtmlMin implements HtmlMinInterface
                             (
                                 $emptyStringTmp !== 'last_was_empty'
                                 &&
-                                !str_ends_with($html, ' ')
+                                !self::partsEndWithSpace($parts)
                             )
                         ) {
-                            $html = rtrim($html);
+                            self::rtrimParts($parts);
 
                             if (
                                 $child->parentNode
                                 &&
                                 $child->parentNode->nodeName !== 'head'
                             ) {
-                                $html .= ' ';
+                                $parts[] = ' ';
                             }
                         }
                         $emptyStringTmp = 'is_empty';
                     }
-                } else {
-                    $html .= $child->wholeText;
+                } elseif ($child->wholeText !== '') {
+                    $parts[] = $child->wholeText;
                 }
             } elseif ($child instanceof DOMComment) {
-                $html .= '<!--' . $child->textContent . '-->';
+                $parts[] = '<!--' . $child->textContent . '-->';
             }
         }
 
-        return $html;
+        return implode('', $parts);
+    }
+
+    /**
+     * @param string[] $parts
+     */
+    private static function partsEndWithSpace(array $parts): bool
+    {
+        $lastIdx = array_key_last($parts);
+
+        return $lastIdx !== null && str_ends_with($parts[$lastIdx], ' ');
+    }
+
+    /**
+     * Same effect as `rtrim(implode('', $parts))` without materializing the
+     * full string: pops all-whitespace parts from the tail, then rtrim's the
+     * first non-all-whitespace part in place.
+     *
+     * @param string[] $parts
+     */
+    private static function rtrimParts(array &$parts): void
+    {
+        while ($parts !== []) {
+            $lastIdx = array_key_last($parts);
+            $trimmed = rtrim($parts[$lastIdx]);
+            if ($trimmed !== '') {
+                $parts[$lastIdx] = $trimmed;
+
+                return;
+            }
+            array_pop($parts);
+        }
     }
 
     private function getDoctype(DOMNode $node): string
@@ -1110,23 +1152,23 @@ class HtmlMin implements HtmlMinInterface
         // Trim whitespace from html-string. [protected html is still protected]
         // -------------------------------------------------------------------------
 
-        // Remove extra white-space(s) between HTML attribute(s)
+        // Remove extra white-space(s) between HTML attribute(s). Try the lazy
+        // outer pattern first; fall back to the greedy one only if PCRE returns
+        // null (catastrophic backtracking on pathological attribute soup).
         if (str_contains($html, ' ')) {
             $htmlCleaned = preg_replace_callback(
                 '#<([^/\s<>!]+)(?:\s+([^<>]*?)\s*|\s*)(/?)>#',
-                static fn ($matches): string => '<' . $matches[1] . preg_replace('#([^\s=]+)(=([\'"]?)(.*?)\3)?(\s+|$)#su', ' $1$2', $matches[2]) . $matches[3] . '>',
+                self::collapseAttributeWhitespace(...),
                 $html,
             );
-            if ($htmlCleaned !== null) {
-                $html = (string)$htmlCleaned;
-            } else {
+            if ($htmlCleaned === null) {
                 $htmlCleaned = (string) preg_replace_callback(
                     '#<([^/\s<>!]+)(?:\s+([^<>]*)\s*|\s*)(/?)>#',
-                    static fn ($matches): string => '<' . $matches[1] . preg_replace('#([^\s=]+)(=([\'"]?)(.*?)\3)?(\s+|$)#su', ' $1$2', $matches[2]) . $matches[3] . '>',
+                    self::collapseAttributeWhitespace(...),
                     $html,
                 );
-                $html = $htmlCleaned;
             }
+            $html = $htmlCleaned;
         }
 
         if ($this->doRemoveSpacesBetweenTags) {
@@ -1538,9 +1580,28 @@ class HtmlMin implements HtmlMinInterface
      */
     private function restoreProtectedHtml(array $matches): string
     {
-        preg_match('/.*"(?<id>\d*)"/', $matches['attributes'], $matchesInner);
+        if (preg_match('/"(\d+)"/', $matches['attributes'], $matchesInner) !== 1) {
+            return '';
+        }
 
-        return $this->protectedChildNodes[(int) ($matchesInner['id'] ?? 0)] ?? '';
+        return $this->protectedChildNodes[(int) $matchesInner[1]] ?? '';
+    }
+
+    /**
+     * Collapses runs of whitespace between attributes within a single HTML tag.
+     *
+     * Shared by the lazy/greedy fallback pair of preg_replace_callback calls in
+     * minify().
+     *
+     * @param array<int|string, string> $matches
+     */
+    private static function collapseAttributeWhitespace(array $matches): string
+    {
+        return '<'
+            . $matches[1]
+            . preg_replace(self::ATTR_WHITESPACE_PATTERN, self::ATTR_WHITESPACE_REPLACEMENT, $matches[2])
+            . $matches[3]
+            . '>';
     }
 
     /**

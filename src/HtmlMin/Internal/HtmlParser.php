@@ -58,6 +58,12 @@ final class HtmlParser
     ];
 
     /**
+     * Precomputed regex that strips the XHTML self-closing slash from void
+     * elements. Must stay in sync with VOID_TAGS above.
+     */
+    private const string VOID_TAGS_PATTERN = '#<(area|base|br|col|embed|hr|img|input|keygen|link|meta|param|source|track|wbr)([^>]*)\s*/>#i';
+
+    /**
      * Character-to-placeholder pairs for URL-metacharacters. Identical byte
      * shape to voku/simple_html_dom so downstream regex filters keep working.
      *
@@ -277,39 +283,68 @@ final class HtmlParser
      */
     public static function replaceToPreserveHtmlEntities(string $html): string
     {
-        $linksNew = [];
-        $linksOld = [];
-
-        if (str_contains($html, 'http')) {
-            $regExUrl = '/(\[?\bhttps?:\/\/[^\s<>]+(?:\(\w+\)|[^[:punct:]\s]|\/|}|]))/i';
-            preg_match_all($regExUrl, $html, $linksOld);
-
-            if (!empty($linksOld[1])) {
-                $linksOld = $linksOld[1];
-                foreach ($linksOld as $linkKey => $linkOld) {
-                    $linksNew[$linkKey] = str_replace(
-                        array_keys(self::URL_CHAR_PLACEHOLDERS),
-                        array_values(self::URL_CHAR_PLACEHOLDERS),
-                        $linkOld,
-                    );
-                }
-            }
-        }
-
-        $linksNewCount = \count($linksNew);
-        if ($linksNewCount > 0 && \count($linksOld) === $linksNewCount) {
-            $search = array_merge($linksOld, array_keys(self::ENTITY_CHAR_PLACEHOLDERS));
-            $replace = array_merge($linksNew, array_values(self::ENTITY_CHAR_PLACEHOLDERS));
-        } else {
-            $search = array_keys(self::ENTITY_CHAR_PLACEHOLDERS);
-            $replace = array_values(self::ENTITY_CHAR_PLACEHOLDERS);
-        }
-
         // Apply the <html ⚡ hack first, before the generic "&" replacement
         // would break it.
         $html = str_replace(self::AMP_PLACEHOLDER_SEARCH, self::AMP_PLACEHOLDER_REPLACE, $html);
 
-        return str_replace($search, $replace, $html);
+        // Single preg_replace_callback pass to replace URL-metachars inside
+        // http[s]:// URLs. The previous implementation extracted every URL with
+        // preg_match_all and then performed one full-document str_replace per
+        // URL — O(URLs × html_size), which on Wikipedia-scale input (thousands
+        // of links in 744 KB of HTML) was the single largest cost in the whole
+        // minify pipeline (~40 ms / 145 ms total).
+        if (str_contains($html, 'http')) {
+            $regExUrl = '/(\[?\bhttps?:\/\/[^\s<>]+(?:\(\w+\)|[^[:punct:]\s]|\/|}|]))/i';
+            $replaced = preg_replace_callback(
+                $regExUrl,
+                static fn (array $m): string => strtr($m[0], self::URL_CHAR_PLACEHOLDERS),
+                $html,
+            );
+            if ($replaced !== null) {
+                $html = $replaced;
+            }
+        }
+
+        return str_replace(
+            array_keys(self::ENTITY_CHAR_PLACEHOLDERS),
+            array_values(self::ENTITY_CHAR_PLACEHOLDERS),
+            $html,
+        );
+    }
+
+    /**
+     * Single strtr map: placeholders → originals + wrapper/special-script tag
+     * cleanup. strtr picks the longest matching key first at each position, so
+     * overlapping SPECIAL_SCRIPT_TAG variants ("</htmlmin-special-script>"
+     * before the shorter "</htmlmin-special-script" and "htmlmin-special-script")
+     * resolve correctly.
+     *
+     * libxml lowercases attribute names, so placeholders used inside attribute
+     * names (e.g. "@change" → "____SIMPLE_HTML_DOM__VOKU__AT____change") come
+     * back lowercase after the DOM round-trip. The original str_ireplace version
+     * relied on case-insensitivity; we emulate that by adding lowercase aliases
+     * for each placeholder.
+     *
+     * @return array<string, string>
+     */
+    private static function buildEntityRestoreMap(): array
+    {
+        $placeholders = array_flip(self::URL_CHAR_PLACEHOLDERS)
+                      + array_flip(self::ENTITY_CHAR_PLACEHOLDERS);
+        $map = $placeholders;
+        foreach ($placeholders as $key => $val) {
+            $map[strtolower($key)] = $val;
+        }
+        $map['<htmlmin-wrapper>']                   = '';
+        $map['</htmlmin-wrapper>']                  = '';
+        $map['htmlmin-wrapper>']                    = '';
+        $map['</htmlmin-wrapper']                   = '';
+        $map['<' . self::SPECIAL_SCRIPT_TAG]        = '<script';
+        $map['</' . self::SPECIAL_SCRIPT_TAG . '>'] = '</script>';
+        $map[self::SPECIAL_SCRIPT_TAG]              = 'script';
+        $map['</' . self::SPECIAL_SCRIPT_TAG]       = '</script';
+
+        return $map;
     }
 
     /**
@@ -318,35 +353,6 @@ final class HtmlParser
      */
     public static function putReplacedBackToPreserveHtmlEntities(string $html, bool $putBrokenReplacedBack = true): string
     {
-        $tmp = array_merge(
-            array_values(self::URL_CHAR_PLACEHOLDERS),
-            array_values(self::ENTITY_CHAR_PLACEHOLDERS),
-        );
-        $orig = array_merge(
-            array_keys(self::URL_CHAR_PLACEHOLDERS),
-            array_keys(self::ENTITY_CHAR_PLACEHOLDERS),
-        );
-
-        // Wrapper tag stripping.
-        $tmp[] = '<htmlmin-wrapper>';
-        $orig[] = '';
-        $tmp[] = '</htmlmin-wrapper>';
-        $orig[] = '';
-        $tmp[] = 'htmlmin-wrapper>';
-        $orig[] = '';
-        $tmp[] = '</htmlmin-wrapper';
-        $orig[] = '';
-
-        // Special-script tag round-trip.
-        $tmp[] = '<' . self::SPECIAL_SCRIPT_TAG;
-        $orig[] = '<script';
-        $tmp[] = '</' . self::SPECIAL_SCRIPT_TAG . '>';
-        $orig[] = '</script>';
-        $tmp[] = self::SPECIAL_SCRIPT_TAG;
-        $orig[] = 'script';
-        $tmp[] = '</' . self::SPECIAL_SCRIPT_TAG;
-        $orig[] = '</script';
-
         if ($putBrokenReplacedBack && !empty(self::$brokenHtmlMap['tmp'])) {
             $html = str_ireplace(self::$brokenHtmlMap['tmp'], self::$brokenHtmlMap['orig'], $html);
         }
@@ -362,7 +368,7 @@ final class HtmlParser
             $html = $ampRestored;
         }
 
-        return str_ireplace($tmp, $orig, $html);
+        return strtr($html, self::buildEntityRestoreMap());
     }
 
     /**
@@ -371,9 +377,8 @@ final class HtmlParser
     public static function serialize(DOMDocument $doc): string
     {
         $html = (string) $doc->saveHTML();
-        $voidPattern = '#<(' . implode('|', array_keys(self::VOID_TAGS)) . ')([^>]*)\s*/>#i';
 
-        return (string) preg_replace($voidPattern, '<$1$2>', $html);
+        return (string) preg_replace(self::VOID_TAGS_PATTERN, '<$1$2>', $html);
     }
 
     /**
@@ -384,6 +389,40 @@ final class HtmlParser
         $doc = $root instanceof DOMDocument ? $root : $root->ownerDocument;
         if ($doc === null) {
             return [];
+        }
+
+        // Fast path: simple tag selectors ("*", "code", "script, style") resolve
+        // via DOMDocument::getElementsByTagName, which is implemented in C and
+        // avoids xpath parsing + evaluation. Noticeably cheaper than an xpath
+        // round-trip on large documents.
+        $selector = trim($selector);
+        if (
+            !str_starts_with($selector, '//')
+            &&
+            ($root instanceof DOMDocument || $root instanceof DOMElement)
+        ) {
+            $tags = str_contains($selector, ',')
+                ? array_filter(array_map(trim(...), explode(',', $selector)))
+                : [$selector];
+            $allSimple = $tags !== [];
+            foreach ($tags as $tag) {
+                if ($tag !== '*' && preg_match('/^[a-zA-Z][a-zA-Z0-9-]*$/', $tag) !== 1) {
+                    $allSimple = false;
+
+                    break;
+                }
+            }
+            if ($allSimple) {
+                $out = [];
+                foreach ($tags as $tag) {
+                    foreach ($root->getElementsByTagName($tag) as $node) {
+                        $out[] = $node;
+                    }
+                }
+
+                /** @var DOMElement[] $out */
+                return $out;
+            }
         }
 
         $xpath = new DOMXPath($doc);
@@ -421,9 +460,7 @@ final class HtmlParser
             }
         }
 
-        $voidPattern = '#<(' . implode('|', array_keys(self::VOID_TAGS)) . ')([^>]*)\s*/>#i';
-
-        return (string) preg_replace($voidPattern, '<$1$2>', $html);
+        return (string) preg_replace(self::VOID_TAGS_PATTERN, '<$1$2>', $html);
     }
 
     public static function setInnerHtml(DOMElement $el, string $html): void
