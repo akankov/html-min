@@ -114,6 +114,15 @@ $htmlMin->attachObserverToTheDomLoop(new StripDataTestIds());
 echo $htmlMin->minify($html);
 ```
 
+## Benchmarks
+
+Measured against voku/html-min, wyrihaximus/html-compress, zaininnari/html-minifier,
+and abordage/html-min on a corpus of real-world HTML pages. See
+[`docs/benchmarks/latest.md`](docs/benchmarks/latest.md) for the published results
+(speed + gzipped compression ratio, with methodology and non-claims).
+
+Reproduce with `make bench-install && make bench` (requires Docker).
+
 ## Development
 
 ```bash
