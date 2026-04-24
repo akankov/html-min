@@ -14,7 +14,6 @@ with a native `\DOMDocument` backend and a modernized type surface.
 
 ### Added
 
-- Rebranded namespace `Akankov\HtmlMin\` (old: `voku\helper\`).
 - `Akankov\HtmlMin\Internal\HtmlParser` — a native `\DOMDocument` + `\DOMXPath`
   adapter that replaces `voku/simple_html_dom` end-to-end.
 - GitHub Actions CI matrix on PHP 8.3 / 8.4 / 8.5.
