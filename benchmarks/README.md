@@ -24,3 +24,16 @@ PHP version, host, git SHA, and adapter versions are stamped into every generate
   which is a different safety class from the other four.
 - `abordage/html-min`'s default config short-circuits if `<!DOCTYPE` isn't within the first 100 bytes of input — it returns the input unchanged. All real-world benchmark fixtures include a DOCTYPE, so this doesn't affect published numbers; fragments or DOCTYPE-less inputs would produce a misleading 1.00 ratio for this adapter.
 - Numbers are for this corpus on your hardware. Ratios between adapters are the signal.
+
+## Latest results
+
+See [`../docs/benchmarks/latest.md`](../docs/benchmarks/latest.md) for the most recent published
+numbers, including host/PHP version provenance.
+
+## Updating the report
+
+1. Make sure you're on a clean commit — the report header captures the git SHA.
+2. `make bench` — writes `docs/benchmarks/latest.md`.
+3. `git add docs/benchmarks/latest.md && git commit -m "docs(benchmarks): refresh"`.
+
+Do not hand-edit `docs/benchmarks/latest.md`. It is regenerated on every run.
