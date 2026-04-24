@@ -28,18 +28,18 @@ final class CompressionReport
     public static function measure(MinifierAdapter $adapter, string $fixture, string $html): array
     {
         $out    = $adapter->minify($html);
-        $inGz   = strlen(gzencode($html, 9) ?: '');
-        $outGz  = strlen(gzencode($out, 9)  ?: '');
+        $inGz   = \strlen(gzencode($html, 9) ?: '');
+        $outGz  = \strlen(gzencode($out, 9) ?: '');
 
         return [
             'adapter'             => $adapter->name(),
             'fixture'             => $fixture,
-            'input_bytes'         => strlen($html),
-            'output_bytes'        => strlen($out),
+            'input_bytes'         => \strlen($html),
+            'output_bytes'        => \strlen($out),
             'input_gzipped_bytes' => $inGz,
-            'output_gzipped_bytes'=> $outGz,
-            'ratio_raw'           => strlen($html) === 0 ? 0.0 : strlen($out) / strlen($html),
-            'ratio_gz'            => $inGz === 0         ? 0.0 : $outGz       / $inGz,
+            'output_gzipped_bytes' => $outGz,
+            'ratio_raw'           => \strlen($html) === 0 ? 0.0 : \strlen($out) / \strlen($html),
+            'ratio_gz'            => $inGz === 0 ? 0.0 : $outGz       / $inGz,
             'sha256_out'          => hash('sha256', $out),
             'parses_ok'           => $out !== '' && self::parses($out),
         ];

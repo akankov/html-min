@@ -18,7 +18,7 @@ final class AdapterRegistryTest extends TestCase
 
     public function testOrderIsStable(): void
     {
-        $names = array_map(fn (MinifierAdapter $a) => $a->name(), AdapterRegistry::all());
+        $names = array_map(fn (MinifierAdapter $a): string => $a->name(), AdapterRegistry::all());
         self::assertSame(
             [
                 'akankov/html-min',
@@ -40,7 +40,7 @@ final class AdapterRegistryTest extends TestCase
 
     public function testNamesAreUnique(): void
     {
-        $names = array_map(fn (MinifierAdapter $a) => $a->name(), AdapterRegistry::all());
+        $names = array_map(fn (MinifierAdapter $a): string => $a->name(), AdapterRegistry::all());
         self::assertSame($names, array_unique($names));
     }
 }

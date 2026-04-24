@@ -8,9 +8,10 @@ PHP         := $(DOCKER_RUN) $(PHP_IMAGE) php
 PHP_PHAN    := $(DOCKER_RUN) $(PHAN_IMAGE) php
 COMPOSER    := $(DOCKER_RUN) composer:2 composer
 
-.PHONY: help install update outdated test test-all phpstan phan phan-image cs cs-check rector rector-check bench-install bench bench-quick bench-baseline quality ci clean
+.PHONY: help install update outdated test test-all phpstan phan phan-image cs cs-check rector rector-check bench-install bench bench-quick bench-baseline bench-cs bench-cs-check bench-rector bench-rector-check bench-phpstan bench-phan bench-quality quality ci clean
 
 BENCH_PHP      := docker run --rm -v "$(CURDIR)":/app -w /app/benchmarks -e BENCH_GIT_SHA=$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown) $(PHP_IMAGE) php
+BENCH_PHP_PHAN := docker run --rm -v "$(CURDIR)":/app -w /app/benchmarks $(PHAN_IMAGE) php
 BENCH_COMPOSER := docker run --rm -v "$(CURDIR)":/app -w /app/benchmarks composer:2 composer
 
 help: ## Show this help
@@ -73,7 +74,27 @@ bench-quick: ## Faster bench for local loops (fewer iterations)
 bench-baseline: ## Copy docs/benchmarks/latest.md to baseline.md for release-diff purposes
 	cp docs/benchmarks/latest.md docs/benchmarks/baseline.md
 
-quality: rector cs phpstan phan ## Run all code quality tools (rector → fixer → phpstan → phan)
+bench-cs: ## Fix code style in benchmarks
+	$(PHP) vendor/bin/php-cs-fixer fix
+
+bench-cs-check: ## Check benchmarks code style without modifying
+	$(PHP) vendor/bin/php-cs-fixer fix --dry-run --diff
+
+bench-rector: ## Apply rector refactors to benchmarks
+	$(BENCH_PHP) vendor/bin/rector process
+
+bench-rector-check: ## Preview rector refactors for benchmarks
+	$(BENCH_PHP) vendor/bin/rector process --dry-run
+
+bench-phpstan: ## Run phpstan on benchmarks
+	$(BENCH_PHP) vendor/bin/phpstan analyse --no-progress --memory-limit=512M
+
+bench-phan: phan-image ## Run phan on benchmarks
+	$(BENCH_PHP_PHAN) vendor/bin/phan --no-progress-bar
+
+bench-quality: bench-rector bench-cs bench-phpstan bench-phan ## Run all quality tools on benchmarks
+
+quality: rector cs phpstan phan ## Run all library code quality tools (rector → fixer → phpstan → phan)
 
 ci: cs-check phpstan phan test-all ## Run the full CI pipeline locally
 

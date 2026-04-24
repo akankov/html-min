@@ -9,9 +9,9 @@ use Composer\InstalledVersions;
 use Override;
 use Throwable;
 
-final class AbordageAdapter implements MinifierAdapter
+final readonly class AbordageAdapter implements MinifierAdapter
 {
-    private readonly HtmlMin $impl;
+    private HtmlMin $impl;
 
     public function __construct()
     {

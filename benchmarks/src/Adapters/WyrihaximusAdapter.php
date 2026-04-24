@@ -10,9 +10,9 @@ use Throwable;
 use WyriHaximus\HtmlCompress\Factory;
 use WyriHaximus\HtmlCompress\HtmlCompressorInterface;
 
-final class WyrihaximusAdapter implements MinifierAdapter
+final readonly class WyrihaximusAdapter implements MinifierAdapter
 {
-    private readonly HtmlCompressorInterface $impl;
+    private HtmlCompressorInterface $impl;
 
     public function __construct()
     {

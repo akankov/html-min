@@ -28,7 +28,7 @@ final class VokuAdapterTest extends TestCase
     {
         $input  = "<html>\n  <body>\n    <p>hi</p>\n  </body>\n</html>";
         $output = (new VokuAdapter())->minify($input);
-        self::assertLessThan(strlen($input), strlen($output));
+        self::assertLessThan(\strlen($input), \strlen($output));
         self::assertStringNotContainsString("\n  ", $output, 'expected whitespace collapsed');
         self::assertStringContainsString('<p>hi', $output, 'expected tag content preserved');
     }

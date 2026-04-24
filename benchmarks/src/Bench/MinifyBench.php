@@ -11,10 +11,15 @@ use Generator;
 
 /**
  * @BeforeMethods({"setUp"})
+ *
  * @Iterations(5)
+ *
  * @Revs(10)
+ *
  * @Warmup(1)
+ *
  * @Timeout(30.0)
+ *
  * @OutputTimeUnit("milliseconds")
  */
 final class MinifyBench
@@ -35,12 +40,17 @@ final class MinifyBench
 
     /**
      * @ParamProviders({"provideCases"})
+     *
+     * @param array{adapter:string, fixture:string} $case
      */
     public function benchMinify(array $case): void
     {
         $this->adapters[$case['adapter']]->minify($this->corpus[$case['fixture']]);
     }
 
+    /**
+     * @return Generator<string, array{adapter:string, fixture:string}>
+     */
     public function provideCases(): Generator
     {
         foreach (AdapterRegistry::all() as $adapter) {

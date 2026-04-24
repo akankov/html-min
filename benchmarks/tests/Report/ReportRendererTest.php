@@ -9,6 +9,19 @@ use PHPUnit\Framework\TestCase;
 
 final class ReportRendererTest extends TestCase
 {
+    /**
+     * @return array{
+     *     header: array{
+     *         generated_at:string,
+     *         php_version:string,
+     *         git_sha:string,
+     *         host:string,
+     *         adapters:list<array{name:string,version:string,unsafe:bool}>
+     *     },
+     *     speed: list<array{adapter:string, fixture:string, ms_per_op:float, stddev:float}>,
+     *     compression: list<array{adapter:string, fixture:string, ratio_raw:float, ratio_gz:float, parses_ok:bool}>
+     * }
+     */
     private function fixtureInput(): array
     {
         return [

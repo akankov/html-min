@@ -18,27 +18,37 @@ final class CompressionReportTest extends TestCase
         $row     = CompressionReport::measure($adapter, 'fixture-name', $html);
 
         self::assertSame('akankov/html-min', $row['adapter']);
-        self::assertSame('fixture-name',    $row['fixture']);
-        self::assertSame(strlen($html),     $row['input_bytes']);
-        self::assertGreaterThan(0,          $row['output_bytes']);
+        self::assertSame('fixture-name', $row['fixture']);
+        self::assertSame(\strlen($html), $row['input_bytes']);
+        self::assertGreaterThan(0, $row['output_bytes']);
         self::assertLessThan($row['input_bytes'], $row['output_bytes']);
-        self::assertGreaterThan(0,          $row['output_gzipped_bytes']);
-        self::assertGreaterThan(0,          $row['input_gzipped_bytes']);
+        self::assertGreaterThan(0, $row['output_gzipped_bytes']);
+        self::assertGreaterThan(0, $row['input_gzipped_bytes']);
         self::assertGreaterThanOrEqual(0.0, $row['ratio_raw']);
-        self::assertLessThanOrEqual(1.0,    $row['ratio_raw']);
-        self::assertIsString($row['sha256_out']);
-        self::assertSame(64, strlen($row['sha256_out']));
-        self::assertIsBool($row['parses_ok']);
+        self::assertLessThanOrEqual(1.0, $row['ratio_raw']);
+        self::assertSame(64, \strlen($row['sha256_out']));
         self::assertTrue($row['parses_ok']);
     }
 
     public function testMeasureMarksFailureWhenOutputEmpty(): void
     {
-        $adapter = new class implements MinifierAdapter {
-            public function name(): string { return 'akankov/html-min'; }
-            public function version(): string { return 'unknown'; }
-            public function minify(string $html): string { return ''; }
-            public function isUnsafeReference(): bool { return false; }
+        $adapter = new class () implements MinifierAdapter {
+            public function name(): string
+            {
+                return 'akankov/html-min';
+            }
+            public function version(): string
+            {
+                return 'unknown';
+            }
+            public function minify(string $html): string
+            {
+                return '';
+            }
+            public function isUnsafeReference(): bool
+            {
+                return false;
+            }
         };
         $row = CompressionReport::measure($adapter, 'x', '<p>hi</p>');
         self::assertFalse($row['parses_ok']);

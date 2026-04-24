@@ -30,7 +30,7 @@ final class AbordageAdapterTest extends TestCase
         // or it short-circuits and returns the input verbatim.
         $input  = "<!DOCTYPE html>\n<html>\n  <body>\n    <p>hi</p>\n  </body>\n</html>";
         $output = (new AbordageAdapter())->minify($input);
-        self::assertLessThan(strlen($input), strlen($output));
+        self::assertLessThan(\strlen($input), \strlen($output));
         self::assertStringNotContainsString("\n  ", $output, 'expected whitespace collapsed');
         self::assertStringContainsString('hi', $output, 'expected content preserved');
     }

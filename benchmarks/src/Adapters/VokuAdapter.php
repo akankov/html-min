@@ -9,9 +9,9 @@ use Override;
 use Throwable;
 use voku\helper\HtmlMin;
 
-final class VokuAdapter implements MinifierAdapter
+final readonly class VokuAdapter implements MinifierAdapter
 {
-    private readonly HtmlMin $impl;
+    private HtmlMin $impl;
 
     public function __construct()
     {

@@ -28,7 +28,7 @@ final class ZaininnariAdapterTest extends TestCase
     {
         $input  = "<html>\n  <body>\n    <p>hi</p>\n  </body>\n</html>";
         $output = (new ZaininnariAdapter())->minify($input);
-        self::assertLessThan(strlen($input), strlen($output));
+        self::assertLessThan(\strlen($input), \strlen($output));
         self::assertStringNotContainsString("\n  ", $output, 'expected whitespace collapsed');
         self::assertStringContainsString('<p>hi</p>', $output, 'expected tag content preserved');
     }

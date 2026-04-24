@@ -9,9 +9,9 @@ use Composer\InstalledVersions;
 use Override;
 use Throwable;
 
-final class AkankovAdapter implements MinifierAdapter
+final readonly class AkankovAdapter implements MinifierAdapter
 {
-    private readonly HtmlMin $impl;
+    private HtmlMin $impl;
 
     public function __construct()
     {

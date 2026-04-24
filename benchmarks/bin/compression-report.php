@@ -23,6 +23,6 @@ foreach (AdapterRegistry::all() as $adapter) {
 
 echo json_encode([
     'generated_at' => gmdate('c'),
-    'php_version'  => PHP_VERSION,
+    'php_version'  => \PHP_VERSION,
     'rows'         => $rows,
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), PHP_EOL;
+], \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES), \PHP_EOL;

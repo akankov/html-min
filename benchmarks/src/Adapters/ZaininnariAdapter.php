@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Akankov\HtmlMinBench\Adapters;
 
 use Composer\InstalledVersions;
+
+use const E_DEPRECATED;
+use const E_WARNING;
+
 use Override;
 use Throwable;
 use zz\Html\HTMLMinify;
@@ -36,7 +40,10 @@ final class ZaininnariAdapter implements MinifierAdapter
             } finally {
                 error_reporting($prev);
             }
-            return is_string($result) ? $result : '';
+            // Defensive: the vendor stub claims string, but earlier releases of
+            // zaininnari/html-minifier could return false on parse failure.
+            // @phpstan-ignore function.alreadyNarrowedType
+            return \is_string($result) ? $result : '';
         } catch (Throwable) {
             // Failure is recorded downstream by CompressionReport::measure via parses_ok=false.
             return '';
