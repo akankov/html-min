@@ -106,5 +106,65 @@ jobs:
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
 
-      - name: Check code style
+      - name: Check code style (library + benchmarks)
         run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+  benchmarks-tests:
+    name: Benchmarks PHPUnit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          coverage: none
+          extensions: dom, libxml, mbstring, zlib
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-benchmarks-${{ hashFiles('benchmarks/composer.json') }}
+          restore-keys: composer-benchmarks-
+
+      - name: Install benchmarks dependencies
+        working-directory: benchmarks
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Run PHPUnit
+        working-directory: benchmarks
+        run: vendor/bin/phpunit
+
+  benchmarks-static-analysis:
+    name: Benchmarks PHPStan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          coverage: none
+          extensions: dom, libxml, mbstring
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-benchmarks-${{ hashFiles('benchmarks/composer.json') }}
+          restore-keys: composer-benchmarks-
+
+      - name: Install benchmarks dependencies
+        working-directory: benchmarks
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Run PHPStan
+        working-directory: benchmarks
+        run: vendor/bin/phpstan analyse --no-progress

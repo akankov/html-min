@@ -3,7 +3,13 @@
 declare(strict_types=1);
 
 $finder = PhpCsFixer\Finder::create()
-    ->in([__DIR__ . '/src', __DIR__ . '/tests'])
+    ->in([
+        __DIR__ . '/src',
+        __DIR__ . '/tests',
+        __DIR__ . '/benchmarks/src',
+        __DIR__ . '/benchmarks/tests',
+        __DIR__ . '/benchmarks/bin',
+    ])
     ->name('*.php');
 
 return (new PhpCsFixer\Config())

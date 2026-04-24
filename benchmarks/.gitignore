@@ -1,0 +1,5 @@
+/vendor/
+/.phpbench.cache/
+/.phpunit.cache/
+/composer.lock
+/build/
