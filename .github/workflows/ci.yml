@@ -109,6 +109,16 @@ jobs:
       - name: Check code style (library + benchmarks)
         run: vendor/bin/php-cs-fixer fix --dry-run --diff
 
+  markdown-style:
+    name: Markdown Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check Markdown formatting
+        run: make md-check
+
   benchmarks-tests:
     name: Benchmarks PHPUnit
     runs-on: ubuntu-latest

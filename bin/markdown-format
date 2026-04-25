@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+
+if ! command -v docker >/dev/null 2>&1; then
+    printf '%s\n' 'docker is required to run the Markdown formatter.' >&2
+    exit 1
+fi
+
+exec docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
+    -e npm_config_cache=/tmp/.npm \
+    -e npm_config_update_notifier=false \
+    -e npm_config_fund=false \
+    -e npm_config_audit=false \
+    -v "$REPO_ROOT:/work" \
+    -w /work \
+    node:22-alpine \
+    npx --yes --package=prettier@3.6.2 prettier --parser markdown "$@"

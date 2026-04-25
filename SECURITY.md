@@ -6,9 +6,9 @@ Security fixes land on the latest `1.x` release. Older majors will only
 be patched once a `2.x` exists, and only for critical issues.
 
 | Version | Supported |
-|---------|-----------|
-| 1.x     | ✅         |
-| < 1.0   | ❌         |
+| ------- | --------- |
+| 1.x     | ✅        |
+| < 1.0   | ❌        |
 
 ## Reporting a Vulnerability
 
