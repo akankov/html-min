@@ -1,10 +1,9 @@
 # html-min benchmarks
 
-Generated: 2026-04-25T08:17:00+00:00
-Host: Linux 6.12.76-linuxkit / PHP 8.4.20 / git 5d0ec53
+Generated: 2026-04-25T09:27:33+00:00
+Host: Linux 6.12.76-linuxkit / PHP 8.4.20 / git cba0a75
 
 **Adapter versions:**
-
 - `akankov/html-min` dev-feat/benchmarks
 - `voku/html-min` 4.5.1
 - `wyrihaximus/html-compress` 4.4.0
@@ -13,23 +12,23 @@ Host: Linux 6.12.76-linuxkit / PHP 8.4.20 / git 5d0ec53
 
 ## Speed (ms/op, lower is better)
 
-| adapter                   | base1         | base2         | base3         | base4         | code          | hlt           | blog-post     | bootstrap-docs | html-email    | marketing-page | wikipedia-article |
-|---------------------------|---------------|---------------|---------------|---------------|---------------|---------------|---------------|----------------|---------------|----------------|-------------------|
-| akankov/html-min          | 0.3 ± 0.0     | 0.3 ± 0.0     | 0.3 ± 0.0     | 2.5 ± 0.0     | 0.1 ± 0.0     | 7.4 ± 0.1     | 13.9 ± 0.1    | 7.6 ± 0.1      | 2.0 ± 0.0     | 13.8 ± 0.1     | 98.3 ± 0.8        |
-| voku/html-min             | 0.4 ± 0.0     | 0.5 ± 0.0     | 0.5 ± 0.0     | 3.1 ± 0.0     | 0.1 ± 0.0     | 10.8 ± 0.1    | 18.5 ± 0.1    | 9.7 ± 0.1      | 2.7 ± 0.0     | 17.5 ± 0.1     | 159.8 ± 0.4       |
-| wyrihaximus/html-compress | 2.5 ± 0.1     | 2.6 ± 0.0     | 2.6 ± 0.0     | 5.7 ± 0.0     | 0.5 ± 0.0     | 16.8 ± 0.1    | 24.8 ± 0.7    | 12.5 ± 0.2     | 3.8 ± 0.1     | 23.0 ± 0.6     | 183.1 ± 3.3       |
-| zaininnari/html-minifier  | 1.1 ± 0.0     | 1.1 ± 0.0     | 1.1 ± 0.0     | 7.0 ± 0.1     | 0.1 ± 0.0     | 23.4 ± 0.2    | 50.8 ± 0.4    | 25.5 ± 0.7     | 9.5 ± 0.0     | 52.6 ± 0.3     | 253.5 ± 3.7       |
-| abordage/html-min †       | **0.0 ± 0.0** | **0.0 ± 0.0** | **0.0 ± 0.0** | **0.1 ± 0.0** | **0.0 ± 0.0** | **0.5 ± 0.0** | **1.3 ± 0.0** | **0.6 ± 0.0**  | **0.2 ± 0.0** | **0.9 ± 0.0**  | **6.6 ± 0.1**     |
+| adapter | base1 | base2 | base3 | base4 | code | hlt | blog-post | bootstrap-docs | html-email | marketing-page | wikipedia-article |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| akankov/html-min | 0.3 ± 0.0 | 0.3 ± 0.0 | 0.3 ± 0.0 | 2.2 ± 0.0 | 0.1 ± 0.0 | 6.7 ± 0.0 | 12.5 ± 0.1 | 6.8 ± 0.0 | 1.8 ± 0.0 | 12.3 ± 0.0 | 82.2 ± 1.2 |
+| voku/html-min | 0.5 ± 0.0 | 0.5 ± 0.0 | 0.6 ± 0.0 | 3.1 ± 0.0 | 0.1 ± 0.0 | 11.1 ± 0.1 | 18.7 ± 0.1 | 9.8 ± 0.1 | 2.7 ± 0.0 | 17.9 ± 0.2 | 166.2 ± 3.0 |
+| wyrihaximus/html-compress | 2.9 ± 0.0 | 2.8 ± 0.0 | 2.9 ± 0.0 | 6.1 ± 0.1 | 0.6 ± 0.0 | 17.2 ± 0.1 | 24.5 ± 0.5 | 12.9 ± 0.3 | 3.7 ± 0.0 | 22.5 ± 0.6 | 183.5 ± 1.1 |
+| zaininnari/html-minifier | 1.1 ± 0.0 | 1.1 ± 0.0 | 1.1 ± 0.0 | 6.9 ± 0.0 | 0.1 ± 0.0 | 23.3 ± 0.1 | 50.7 ± 1.1 | 24.8 ± 0.1 | 9.5 ± 0.1 | 52.6 ± 0.2 | 250.8 ± 3.2 |
+| abordage/html-min † | **0.0 ± 0.0** | **0.0 ± 0.0** | **0.0 ± 0.0** | **0.1 ± 0.0** | **0.0 ± 0.0** | **0.5 ± 0.0** | **1.3 ± 0.0** | **0.6 ± 0.0** | **0.2 ± 0.0** | **0.9 ± 0.0** | **6.4 ± 0.1** |
 
 ## Compression (gzipped ratio, lower is better)
 
-| adapter                   | base1                 | base2                 | base3                 | base4                 | code                  | hlt                   | blog-post             | bootstrap-docs        | html-email            | marketing-page        | wikipedia-article     |
-|---------------------------|-----------------------|-----------------------|-----------------------|-----------------------|-----------------------|-----------------------|-----------------------|-----------------------|-----------------------|-----------------------|-----------------------|
-| akankov/html-min          | 88.6% (raw 83.4%)     | 91.1% (raw 89.0%)     | 90.5% (raw 89.0%)     | **95.4% (raw 78.9%)** | **92.6% (raw 91.6%)** | 91.7% (raw 72.6%)     | 85.1% (raw 76.1%)     | 99.0% (raw 96.0%)     | 75.3% (raw 65.2%)     | 90.6% (raw 78.5%)     | 99.5% (raw 95.8%)     |
-| voku/html-min             | 88.6% (raw 83.4%)     | 91.1% (raw 89.0%)     | 90.5% (raw 89.0%)     | 95.5% (raw 78.9%)     | **92.6% (raw 91.6%)** | 91.8% (raw 72.6%)     | 85.1% (raw 76.1%)     | 98.9% (raw 96.0%)     | 75.3% (raw 65.2%)     | 90.6% (raw 78.5%)     | 99.6% (raw 95.8%)     |
-| wyrihaximus/html-compress | 78.6% (raw 70.7%)     | 84.0% (raw 79.7%)     | 81.4% (raw 77.7%)     | 95.4% (raw 78.9%)     | **92.6% (raw 91.6%)** | **91.2% (raw 71.8%)** | **84.9% (raw 76.0%)** | **98.9% (raw 95.9%)** | **57.6% (raw 50.8%)** | **90.5% (raw 78.4%)** | 99.5% (raw 95.6%)     |
-| zaininnari/html-minifier  | 92.2% (raw 91.1%)     | 92.8% (raw 92.5%)     | 92.2% (raw 92.2%)     | 96.9% (raw 88.5%)     | 99.5% (raw 99.8%)     | 92.9% (raw 77.3%)     | 88.0% (raw 87.5%)     | 99.9% (raw 100.0%)    | 75.3% (raw 68.8%)     | 93.6% (raw 89.4%)     | 99.0% (raw 99.4%)     |
-| abordage/html-min †       | **73.6% (raw 70.0%)** | **74.0% (raw 71.9%)** | **74.2% (raw 72.3%)** | 96.3% (raw 87.4%)     | 99.0% (raw 98.9%)     | 92.7% (raw 78.2%)     | 85.5% (raw 78.6%)     | 99.1% (raw 98.4%)     | 71.2% (raw 61.0%)     | 91.6% (raw 81.4%)     | **98.8% (raw 99.0%)** |
+| adapter | base1 | base2 | base3 | base4 | code | hlt | blog-post | bootstrap-docs | html-email | marketing-page | wikipedia-article |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| akankov/html-min | 88.6% (raw 83.4%) | 91.1% (raw 89.0%) | 90.5% (raw 89.0%) | **95.4% (raw 78.9%)** | **92.6% (raw 91.6%)** | 91.7% (raw 72.6%) | 85.1% (raw 76.1%) | 99.0% (raw 96.0%) | 75.3% (raw 65.2%) | 90.6% (raw 78.5%) | 99.5% (raw 95.8%) |
+| voku/html-min | 88.6% (raw 83.4%) | 91.1% (raw 89.0%) | 90.5% (raw 89.0%) | 95.5% (raw 78.9%) | **92.6% (raw 91.6%)** | 91.8% (raw 72.6%) | 85.1% (raw 76.1%) | 98.9% (raw 96.0%) | 75.3% (raw 65.2%) | 90.6% (raw 78.5%) | 99.6% (raw 95.8%) |
+| wyrihaximus/html-compress | 78.6% (raw 70.7%) | 84.0% (raw 79.7%) | 81.4% (raw 77.7%) | 95.4% (raw 78.9%) | **92.6% (raw 91.6%)** | **91.2% (raw 71.8%)** | **84.9% (raw 76.0%)** | **98.9% (raw 95.9%)** | **57.6% (raw 50.8%)** | **90.5% (raw 78.4%)** | 99.5% (raw 95.6%) |
+| zaininnari/html-minifier | 92.2% (raw 91.1%) | 92.8% (raw 92.5%) | 92.2% (raw 92.2%) | 96.9% (raw 88.5%) | 99.5% (raw 99.8%) | 92.9% (raw 77.3%) | 88.0% (raw 87.5%) | 99.9% (raw 100.0%) | 75.3% (raw 68.8%) | 93.6% (raw 89.4%) | 99.0% (raw 99.4%) |
+| abordage/html-min † | **73.6% (raw 70.0%)** | **74.0% (raw 71.9%)** | **74.2% (raw 72.3%)** | 96.3% (raw 87.4%) | 99.0% (raw 98.9%) | 92.7% (raw 78.2%) | 85.5% (raw 78.6%) | 99.1% (raw 98.4%) | 71.2% (raw 61.0%) | 91.6% (raw 81.4%) | **98.8% (raw 99.0%)** |
 
 ## Methodology
 
@@ -40,8 +39,7 @@ Host: Linux 6.12.76-linuxkit / PHP 8.4.20 / git 5d0ec53
 - Speed measured via PHPBench: 1 warmup revolution, 10 revolutions × 5 iterations.
 - Compression measured separately by running each adapter once per fixture and measuring output via `gzencode($out, 9)`.
 - Every output is round-tripped through `DOMDocument::loadHTML`; cells marked `n/a†` failed this check.
-- † marks adapters flagged as **regex-based (unsafe reference)**: `abordage/html-min`. Their speed numbers are
-  informative but the comparison class is asymmetric — they skip structural HTML parsing.
+- † marks adapters flagged as **regex-based (unsafe reference)**: `abordage/html-min`. Their speed numbers are informative but the comparison class is asymmetric — they skip structural HTML parsing.
 
 ## Non-claims
 

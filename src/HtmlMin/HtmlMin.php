@@ -126,14 +126,14 @@ class HtmlMin implements HtmlMinInterface
     ];
 
     /**
-     * @var string[]
+     * @var array<string, string>
      */
     private static array $skipTagsForRemoveWhitespace = [
-        'code',
-        'pre',
-        'script',
-        'style',
-        'textarea',
+        'code'     => '',
+        'pre'      => '',
+        'script'   => '',
+        'style'    => '',
+        'textarea' => '',
     ];
 
     /**
@@ -219,7 +219,10 @@ class HtmlMin implements HtmlMinInterface
     private bool $withDocType = false;
 
     /** @var SplObjectStorage<DomObserver, DomObserver> */
-    private SplObjectStorage $domLoopObservers;
+    private SplObjectStorage $domLoopBeforeObservers;
+
+    /** @var SplObjectStorage<DomObserver, DomObserver> */
+    private SplObjectStorage $domLoopAfterObservers;
 
     private int $protected_tags_counter = 0;
 
@@ -239,14 +242,19 @@ class HtmlMin implements HtmlMinInterface
 
     public function __construct()
     {
-        $this->domLoopObservers = new SplObjectStorage();
+        $this->domLoopBeforeObservers = new SplObjectStorage();
+        $this->domLoopAfterObservers = new SplObjectStorage();
 
         $this->attachObserverToTheDomLoop(new OptimizeAttributes());
     }
 
     public function attachObserverToTheDomLoop(DomObserver $observer): void
     {
-        $this->domLoopObservers[$observer] = $observer;
+        if (!$observer instanceof OptimizeAttributes) {
+            $this->domLoopBeforeObservers[$observer] = $observer;
+        }
+
+        $this->domLoopAfterObservers[$observer] = $observer;
     }
 
 
@@ -1292,10 +1300,8 @@ class HtmlMin implements HtmlMinInterface
      *
      * <!--[if expression]> HTML <![endif]-->
      * <![if expression]> HTML <![endif]>
-     *
-     * @param string $comment
      */
-    private function isConditionalComment($comment): bool
+    private function isConditionalComment(string $comment): bool
     {
         if (str_contains($comment, '[if ')) {
             /** @noinspection RegExpRedundantEscape */
@@ -1318,10 +1324,8 @@ class HtmlMin implements HtmlMinInterface
 
     /**
      * Check if the current string is an special comment.
-     *
-     * @param string $comment
      */
-    private function isSpecialComment($comment): bool
+    private function isSpecialComment(string $comment): bool
     {
         foreach ($this->specialHtmlCommentsStaringWith as $search) {
             if (str_starts_with($comment, $search)) {
@@ -1383,8 +1387,14 @@ class HtmlMin implements HtmlMinInterface
         // Notify the Observer before the minification.
         // -------------------------------------------------------------------------
 
-        foreach (HtmlParser::findAll($dom, '*') as $element) {
-            $this->notifyObserversAboutDomElementBeforeMinification($element);
+        if ($this->domLoopBeforeObservers->count() > 0) {
+            foreach (HtmlParser::findAll($dom, '*') as $element) {
+                if (!$element instanceof DOMElement) {
+                    continue;
+                }
+
+                $this->notifyObserversAboutDomElementBeforeMinification($element);
+            }
         }
 
         // -------------------------------------------------------------------------
@@ -1397,19 +1407,15 @@ class HtmlMin implements HtmlMinInterface
         // Remove default HTML comments. [protected html is still protected]
         // -------------------------------------------------------------------------
 
-        if ($this->doRemoveComments) {
-            $this->removeComments($dom);
-        }
-
-        // -------------------------------------------------------------------------
-        // Sum-Up extra whitespace from the Dom. [protected html is still protected]
-        // -------------------------------------------------------------------------
-
         if ($this->doSumUpWhitespace) {
             $this->sumUpWhitespace($dom);
         }
 
         foreach (HtmlParser::findAll($dom, '*') as $element) {
+            if (!$element instanceof DOMElement) {
+                continue;
+            }
+
             // -------------------------------------------------------------------------
             // Remove whitespace around tags. [protected html is still protected]
             // -------------------------------------------------------------------------
@@ -1434,14 +1440,14 @@ class HtmlMin implements HtmlMinInterface
 
     private function notifyObserversAboutDomElementAfterMinification(DOMElement $domElement): void
     {
-        foreach ($this->domLoopObservers as $observer) {
+        foreach ($this->domLoopAfterObservers as $observer) {
             $observer->domElementAfterMinification($domElement, $this);
         }
     }
 
     private function notifyObserversAboutDomElementBeforeMinification(DOMElement $domElement): void
     {
-        foreach ($this->domLoopObservers as $observer) {
+        foreach ($this->domLoopBeforeObservers as $observer) {
             $observer->domElementBeforeMinification($domElement, $this);
         }
     }
@@ -1449,6 +1455,10 @@ class HtmlMin implements HtmlMinInterface
     private function protectTagHelper(DOMDocument $dom, string $selector): void
     {
         foreach (HtmlParser::findAll($dom, $selector) as $element) {
+            if (!$element instanceof DOMElement) {
+                continue;
+            }
+
             if ($element->parentNode === null) {
                 continue;
             }
@@ -1472,7 +1482,13 @@ class HtmlMin implements HtmlMinInterface
     {
         $this->protectTagHelper($dom, 'code');
 
+        $didRemoveComments = false;
+
         foreach (HtmlParser::findAll($dom, 'script, style') as $element) {
+            if (!$element instanceof DOMElement) {
+                continue;
+            }
+
             if ($element->parentNode === null) {
                 continue;
             }
@@ -1499,11 +1515,14 @@ class HtmlMin implements HtmlMinInterface
         }
 
         foreach (HtmlParser::findAll($dom, '//comment()') as $element) {
+            if (!$element instanceof DOMComment) {
+                continue;
+            }
+
             if ($element->parentNode === null) {
                 continue;
             }
 
-            /** @var DOMComment $element */
             $text = $element->textContent;
 
             if (
@@ -1511,6 +1530,12 @@ class HtmlMin implements HtmlMinInterface
                 &&
                 !$this->isSpecialComment($text)
             ) {
+                if ($this->doRemoveComments && !str_contains($text, '[')) {
+                    $parentNode = $element->parentNode;
+                    $parentNode->removeChild($element);
+                    $didRemoveComments = true;
+                }
+
                 continue;
             }
 
@@ -1518,31 +1543,14 @@ class HtmlMin implements HtmlMinInterface
 
             $child = new DOMText('<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>');
             $parentNode = $element->parentNode;
-            if ($parentNode !== null) {
-                $parentNode->replaceChild($child, $element);
-            }
+            $parentNode->replaceChild($child, $element);
 
             ++$this->protected_tags_counter;
         }
-    }
 
-    /**
-     * Remove comments in the dom.
-     */
-    private function removeComments(DOMDocument $dom): void
-    {
-        foreach (HtmlParser::findAll($dom, '//comment()') as $comment) {
-            /** @var DOMComment $comment */
-            $val = $comment->nodeValue ?? '';
-            if (!str_contains($val, '[')) {
-                $parentNode = $comment->parentNode;
-                if ($parentNode !== null) {
-                    $parentNode->removeChild($comment);
-                }
-            }
+        if ($didRemoveComments) {
+            $dom->normalizeDocument();
         }
-
-        $dom->normalizeDocument();
     }
 
     /**
@@ -1580,7 +1588,7 @@ class HtmlMin implements HtmlMinInterface
      */
     private function restoreProtectedHtml(array $matches): string
     {
-        if (preg_match('/"(\d+)"/', $matches['attributes'], $matchesInner) !== 1) {
+        if (preg_match('/=(?:"|)?(\d+)(?:"|)?/', str_replace("'", "\a", (string) $matches['attributes']), $matchesInner) !== 1) {
             return '';
         }
 
@@ -1632,21 +1640,11 @@ class HtmlMin implements HtmlMinInterface
     private function sumUpWhitespace(DOMDocument $dom): void
     {
         foreach (HtmlParser::findAll($dom, '//text()') as $text_node) {
-            /** @var DOMText $text_node */
-            $xp = $text_node->getNodePath();
-            if ($xp === null) {
+            if (!$text_node instanceof DOMText) {
                 continue;
             }
 
-            $doSkip = false;
-            foreach (self::$skipTagsForRemoveWhitespace as $pattern) {
-                if (str_contains($xp, '/' . $pattern)) {
-                    $doSkip = true;
-
-                    break;
-                }
-            }
-            if ($doSkip) {
+            if (self::isInsideWhitespaceProtectedTag($text_node)) {
                 continue;
             }
 
@@ -1655,8 +1653,21 @@ class HtmlMin implements HtmlMinInterface
                 $text_node->nodeValue = $nodeValueTmp;
             }
         }
+    }
 
-        $dom->normalizeDocument();
+    private static function isInsideWhitespaceProtectedTag(DOMText $textNode): bool
+    {
+        $parentNode = $textNode->parentNode;
+
+        while ($parentNode !== null) {
+            if ($parentNode instanceof DOMElement && isset(self::$skipTagsForRemoveWhitespace[$parentNode->tagName])) {
+                return true;
+            }
+
+            $parentNode = $parentNode->parentNode;
+        }
+
+        return false;
     }
 
     /**

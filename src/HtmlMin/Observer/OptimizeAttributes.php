@@ -18,6 +18,8 @@ use Override;
  */
 final class OptimizeAttributes implements DomObserver
 {
+    private const string REMOVABLE_EMPTY_ATTRIBUTES_PATTERN = '/^(?:class|id|style|title|lang|dir|on(?:focus|blur|change|click|dblclick|mouse(?:down|up|over|move|out)|key(?:press|down|up)))$/';
+
     /**
      * // https://mathiasbynens.be/demo/javascript-mime-type
      * // https://developer.mozilla.org/en/docs/Web/HTML/Element/script#attr-type
@@ -49,20 +51,38 @@ final class OptimizeAttributes implements DomObserver
     #[Override]
     public function domElementAfterMinification(DOMElement $element, HtmlMinInterface $htmlMin): void
     {
+        if ($element->attributes->length === 0) {
+            return;
+        }
+
+        $sortHtmlAttributes = $htmlMin->isDoSortHtmlAttributes();
+        $sortCssClassNames = $htmlMin->isDoSortCssClassNames();
+        $makeSameDomainsLinksRelative = $htmlMin->isDoMakeSameDomainsLinksRelative();
+        $removeHttpPrefix = $htmlMin->isDoRemoveHttpPrefixFromAttributes();
+        $removeHttpsPrefix = $htmlMin->isDoRemoveHttpsPrefixFromAttributes();
+
         $attributes = HtmlParser::getAllAttributes($element);
         if ($attributes === []) {
             return;
         }
 
         $tagName = $element->tagName;
-        $attrs = [];
+        $attributesAreSorted = $sortHtmlAttributes && self::isSortedAttributes($attributes);
+        $hasNamespacedAttribute = $sortHtmlAttributes && self::hasNamespacedAttribute($attributes);
+        $attrs = $sortHtmlAttributes ? [] : $attributes;
+        $isExternal = (isset($attributes['rel']) && $attributes['rel'] === 'external')
+            || (isset($attributes['target']) && $attributes['target'] === '_blank');
+        $canRewriteUrlAttributes = !$isExternal;
+        $localDomains = $makeSameDomainsLinksRelative ? $htmlMin->getLocalDomains() : [];
+        $didChange = false;
+        $didRemoveAttribute = false;
+
         foreach ($attributes as $attrName => $attrValue) {
             // -------------------------------------------------------------------------
             // Remove local domains from attributes.
             // -------------------------------------------------------------------------
 
-            if ($htmlMin->isDoMakeSameDomainsLinksRelative()) {
-                $localDomains = $htmlMin->getLocalDomains();
+            if ($makeSameDomainsLinksRelative && $canRewriteUrlAttributes) {
                 foreach ($localDomains as $localDomain) {
                     /** @noinspection InArrayCanBeUsedInspection */
                     if (
@@ -76,15 +96,15 @@ final class OptimizeAttributes implements DomObserver
                             $attrName === 'action'
                         )
                         &&
-                        !(isset($attributes['rel']) && $attributes['rel'] === 'external')
-                        &&
-                        !(isset($attributes['target']) && $attributes['target'] === '_blank')
-                        &&
                         stripos($attrValue, $localDomain) !== false
                     ) {
                         $localDomainEscaped = preg_quote($localDomain, '/');
 
-                        $attrValue = (string) preg_replace("/^(?:(?:https?:)?\/\/)?{$localDomainEscaped}(?!\w)(?:\/?)/i", '/', $attrValue);
+                        $newAttrValue = (string) preg_replace("/^(?:(?:https?:)?\/\/)?{$localDomainEscaped}(?!\w)(?:\/?)/i", '/', $attrValue);
+                        if ($newAttrValue !== $attrValue) {
+                            $attrValue = $newAttrValue;
+                            $didChange = true;
+                        }
                     }
                 }
             }
@@ -93,7 +113,8 @@ final class OptimizeAttributes implements DomObserver
             // Remove optional "http:"-prefix from attributes.
             // -------------------------------------------------------------------------
 
-            if ($htmlMin->isDoRemoveHttpPrefixFromAttributes()) {
+            if ($removeHttpPrefix && $canRewriteUrlAttributes) {
+                $previousAttrValue = $attrValue;
                 $attrValue = $this->removeUrlSchemeHelper(
                     $attrValue,
                     $attrName,
@@ -102,9 +123,13 @@ final class OptimizeAttributes implements DomObserver
                     $tagName,
                     $htmlMin,
                 );
+                if ($attrValue !== $previousAttrValue) {
+                    $didChange = true;
+                }
             }
 
-            if ($htmlMin->isDoRemoveHttpsPrefixFromAttributes()) {
+            if ($removeHttpsPrefix && $canRewriteUrlAttributes) {
+                $previousAttrValue = $attrValue;
                 $attrValue = $this->removeUrlSchemeHelper(
                     $attrValue,
                     $attrName,
@@ -113,6 +138,9 @@ final class OptimizeAttributes implements DomObserver
                     $tagName,
                     $htmlMin,
                 );
+                if ($attrValue !== $previousAttrValue) {
+                    $didChange = true;
+                }
             }
 
             // -------------------------------------------------------------------------
@@ -126,7 +154,12 @@ final class OptimizeAttributes implements DomObserver
                 $attributes,
                 $htmlMin,
             )) {
-                $element->removeAttribute($attrName);
+                if ($sortHtmlAttributes) {
+                    $didRemoveAttribute = true;
+                } else {
+                    $element->removeAttribute($attrName);
+                }
+                $didChange = true;
 
                 continue;
             }
@@ -135,13 +168,19 @@ final class OptimizeAttributes implements DomObserver
             // Sort css-class-names, for better gzip results.
             // -------------------------------------------------------------------------
 
-            if ($htmlMin->isDoSortCssClassNames()) {
-                $attrValue = $this->sortCssClassNames($attrName, $attrValue);
+            if ($sortCssClassNames && $attrName === 'class' && str_contains($attrValue, ' ')) {
+                $sortedAttrValue = $this->sortCssClassNames($attrName, $attrValue);
+                if ($sortedAttrValue !== $attrValue) {
+                    $attrValue = $sortedAttrValue;
+                    $didChange = true;
+                }
             }
 
-            if ($htmlMin->isDoSortHtmlAttributes()) {
+            if ($sortHtmlAttributes) {
                 $attrs[$attrName] = $attrValue;
-                $element->removeAttribute($attrName);
+            } elseif ($attrValue !== $attributes[$attrName]) {
+                $element->setAttribute($attrName, HtmlParser::replaceToPreserveHtmlEntities($attrValue));
+                $didChange = true;
             }
         }
 
@@ -149,7 +188,17 @@ final class OptimizeAttributes implements DomObserver
         // Sort html-attributes, for better gzip results.
         // -------------------------------------------------------------------------
 
-        if ($htmlMin->isDoSortHtmlAttributes()) {
+        if ($sortHtmlAttributes) {
+            if (!$didChange && !$didRemoveAttribute && $attributesAreSorted && !$hasNamespacedAttribute) {
+                return;
+            }
+
+            foreach (array_keys($attributes) as $attrName) {
+                if ($element->hasAttribute($attrName)) {
+                    $element->removeAttribute($attrName);
+                }
+            }
+
             ksort($attrs);
             foreach ($attrs as $attrName => $attrValue) {
                 $attrValue = HtmlParser::replaceToPreserveHtmlEntities($attrValue);
@@ -285,7 +334,7 @@ final class OptimizeAttributes implements DomObserver
         // remove some empty attributes
         if ($htmlMin->isDoRemoveEmptyAttributes()) {
             /** @noinspection NestedPositiveIfStatementsInspection */
-            if (trim($attrValue) === '' && preg_match('/^(?:class|id|style|title|lang|dir|on(?:focus|blur|change|click|dblclick|mouse(?:down|up|over|move|out)|key(?:press|down|up)))$/', $attrName)) {
+            if (trim($attrValue) === '' && preg_match(self::REMOVABLE_EMPTY_ATTRIBUTES_PATTERN, $attrName)) {
                 return true;
             }
         }
@@ -357,5 +406,36 @@ final class OptimizeAttributes implements DomObserver
         }
 
         return trim($attrValue);
+    }
+
+    /**
+     * @param array<string, string> $attributes
+     */
+    private static function isSortedAttributes(array $attributes): bool
+    {
+        $previous = null;
+        foreach (array_keys($attributes) as $attrName) {
+            if ($previous !== null && strcmp($previous, $attrName) > 0) {
+                return false;
+            }
+
+            $previous = $attrName;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<string, string> $attributes
+     */
+    private static function hasNamespacedAttribute(array $attributes): bool
+    {
+        foreach (array_keys($attributes) as $attrName) {
+            if (str_contains($attrName, ':')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

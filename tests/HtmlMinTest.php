@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Akankov\HtmlMin\Tests;
 
+use Akankov\HtmlMin\Contract\DomObserver;
+use Akankov\HtmlMin\Contract\HtmlMinInterface;
 use Akankov\HtmlMin\HtmlMin;
+use DOMElement;
 
 use const LIBXML_VERSION;
 
+use Override;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -192,6 +196,33 @@ final class HtmlMinTest extends TestCase
                 '',
             ],
         ];
+    }
+
+    public function testCustomObserverBeforeAndAfterHooksStillRun(): void
+    {
+        $htmlMin = new HtmlMin();
+        $htmlMin->attachObserverToTheDomLoop(new class () implements DomObserver {
+            #[Override]
+            public function domElementBeforeMinification(DOMElement $element, HtmlMinInterface $htmlMin): void
+            {
+                if ($element->tagName === 'span' && $element->getAttribute('data-before') === 'init') {
+                    $element->setAttribute('data-before', 'done');
+                }
+            }
+
+            #[Override]
+            public function domElementAfterMinification(DOMElement $element, HtmlMinInterface $htmlMin): void
+            {
+                if ($element->tagName === 'span' && $element->getAttribute('data-before') === 'done') {
+                    $element->removeAttribute('data-after');
+                }
+            }
+        });
+
+        self::assertSame(
+            '<div><span data-before=done>x</span></div>',
+            $htmlMin->minify('<div><span data-after=drop data-before=init>x</span></div>'),
+        );
     }
 
     #[DataProvider('provideBoolAttrCases')]
