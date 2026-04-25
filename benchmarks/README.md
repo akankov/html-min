@@ -1,7 +1,7 @@
 # html-min benchmarks
 
 Measures `akankov/html-min` against four other PHP HTML minifiers on speed and compression ratio.
-Results are published to `../src/docs/benchmarks/latest.md` by `make bench` run from the library root.
+Results are published to `../latest.md` by `make bench` run from the library root.
 
 ## Run
 
@@ -27,13 +27,13 @@ PHP version, host, git SHA, and adapter versions are stamped into every generate
 
 ## Latest results
 
-See [`../src/docs/benchmarks/latest.md`](../src/docs/benchmarks/latest.md) for the most recent published
+See [`../latest.md`](../latest.md) for the most recent published
 numbers, including host/PHP version provenance.
 
 ## Updating the report
 
 1. Make sure you're on a clean commit — the report header captures the git SHA.
-2. `make bench` — writes `src/docs/benchmarks/latest.md`.
-3. `git add src/docs/benchmarks/latest.md && git commit -m "docs(benchmarks): refresh"`.
+2. `make bench` — writes `latest.md`.
+3. `git add latest.md && git commit -m "docs(benchmarks): refresh"`.
 
-Do not hand-edit `src/docs/benchmarks/latest.md`. It is regenerated on every run.
+Do not hand-edit `latest.md`. It is regenerated on every run.

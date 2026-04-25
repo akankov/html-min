@@ -7,29 +7,29 @@ and modernizes the type surface.
 
 ## Package & class renames
 
-| Before (voku)                                               | After (akankov)                                     |
-| ----------------------------------------------------------- | --------------------------------------------------- |
-| `voku/html-min` (Composer)                                  | `akankov/html-min` (Composer)                       |
-| `voku\helper\HtmlMin`                                       | `Akankov\HtmlMin\HtmlMin`                           |
-| `voku\helper\HtmlMinInterface`                              | `Akankov\HtmlMin\Contract\HtmlMinInterface`         |
-| `voku\helper\HtmlMinDomObserverInterface`                   | `Akankov\HtmlMin\Contract\DomObserver`              |
-| `voku\helper\HtmlMinDomObserverOptimizeAttributes`          | `Akankov\HtmlMin\Observer\OptimizeAttributes`       |
+| Before (voku)                                      | After (akankov)                               |
+| -------------------------------------------------- | --------------------------------------------- |
+| `voku/html-min` (Composer)                         | `akankov/html-min` (Composer)                 |
+| `voku\helper\HtmlMin`                              | `Akankov\HtmlMin\HtmlMin`                     |
+| `voku\helper\HtmlMinInterface`                     | `Akankov\HtmlMin\Contract\HtmlMinInterface`   |
+| `voku\helper\HtmlMinDomObserverInterface`          | `Akankov\HtmlMin\Contract\DomObserver`        |
+| `voku\helper\HtmlMinDomObserverOptimizeAttributes` | `Akankov\HtmlMin\Observer\OptimizeAttributes` |
 
 ## Migration in three steps
 
 1. Swap the Composer requirement:
 
-   ```diff
-   - "voku/html-min": "^4.5"
-   + "akankov/html-min": "^1.0"
-   ```
+    ```diff
+    - "voku/html-min": "^4.5"
+    + "akankov/html-min": "^1.0"
+    ```
 
 2. Update your `use` statements:
 
-   ```diff
-   - use voku\helper\HtmlMin;
-   + use Akankov\HtmlMin\HtmlMin;
-   ```
+    ```diff
+    - use voku\helper\HtmlMin;
+    + use Akankov\HtmlMin\HtmlMin;
+    ```
 
 3. Run `composer update` and test. No public method signatures on `HtmlMin`
    have changed; fluent-API calls (`$htmlMin->doRemoveComments()->minify($html)`)

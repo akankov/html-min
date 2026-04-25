@@ -20,6 +20,14 @@ final class OptimizeAttributes implements DomObserver
 {
     private const string REMOVABLE_EMPTY_ATTRIBUTES_PATTERN = '/^(?:class|id|style|title|lang|dir|on(?:focus|blur|change|click|dblclick|mouse(?:down|up|over|move|out)|key(?:press|down|up)))$/';
 
+    /** @var array<string, true> */
+    private const array URL_ATTRIBUTES = [
+        'action' => true,
+        'href'   => true,
+        'src'    => true,
+        'srcset' => true,
+    ];
+
     /**
      * // https://mathiasbynens.be/demo/javascript-mime-type
      * // https://developer.mozilla.org/en/docs/Web/HTML/Element/script#attr-type
@@ -60,6 +68,7 @@ final class OptimizeAttributes implements DomObserver
         $makeSameDomainsLinksRelative = $htmlMin->isDoMakeSameDomainsLinksRelative();
         $removeHttpPrefix = $htmlMin->isDoRemoveHttpPrefixFromAttributes();
         $removeHttpsPrefix = $htmlMin->isDoRemoveHttpsPrefixFromAttributes();
+        $keepHttpAndHttpsPrefixOnExternalAttributes = $htmlMin->isdoKeepHttpAndHttpsPrefixOnExternalAttributes();
 
         $attributes = HtmlParser::getAllAttributes($element);
         if ($attributes === []) {
@@ -78,33 +87,34 @@ final class OptimizeAttributes implements DomObserver
         $didRemoveAttribute = false;
 
         foreach ($attributes as $attrName => $attrValue) {
+            $isUrlAttribute = isset(self::URL_ATTRIBUTES[$attrName]);
+            $canMakeRelative = $makeSameDomainsLinksRelative && $canRewriteUrlAttributes && $isUrlAttribute;
+            $canRemoveScheme = $canRewriteUrlAttributes
+                && (
+                    $attrName === 'src'
+                    || $attrName === 'srcset'
+                    || $attrName === 'action'
+                    || ($attrName === 'href' && (!$keepHttpAndHttpsPrefixOnExternalAttributes || $tagName === 'link'))
+                );
+
             // -------------------------------------------------------------------------
             // Remove local domains from attributes.
             // -------------------------------------------------------------------------
 
-            if ($makeSameDomainsLinksRelative && $canRewriteUrlAttributes) {
+            if ($canMakeRelative) {
                 foreach ($localDomains as $localDomain) {
-                    /** @noinspection InArrayCanBeUsedInspection */
-                    if (
-                        (
-                            $attrName === 'href'
-                            ||
-                            $attrName === 'src'
-                            ||
-                            $attrName === 'srcset'
-                            ||
-                            $attrName === 'action'
-                        )
-                        &&
-                        stripos($attrValue, $localDomain) !== false
-                    ) {
-                        $localDomainEscaped = preg_quote($localDomain, '/');
+                    if (stripos($attrValue, $localDomain) === false) {
+                        continue;
+                    }
 
-                        $newAttrValue = (string) preg_replace("/^(?:(?:https?:)?\/\/)?{$localDomainEscaped}(?!\w)(?:\/?)/i", '/', $attrValue);
-                        if ($newAttrValue !== $attrValue) {
-                            $attrValue = $newAttrValue;
-                            $didChange = true;
-                        }
+                    $localDomainEscaped = preg_quote($localDomain, '/');
+
+                    $newAttrValue = (string) preg_replace("/^(?:(?:https?:)?\/\/)?{$localDomainEscaped}(?!\w)(?:\/?)/i", '/', $attrValue);
+                    if ($newAttrValue !== $attrValue) {
+                        $attrValue = $newAttrValue;
+                        $didChange = true;
+
+                        break;
                     }
                 }
             }
@@ -113,31 +123,17 @@ final class OptimizeAttributes implements DomObserver
             // Remove optional "http:"-prefix from attributes.
             // -------------------------------------------------------------------------
 
-            if ($removeHttpPrefix && $canRewriteUrlAttributes) {
+            if ($removeHttpPrefix && $canRemoveScheme && str_contains($attrValue, 'http://')) {
                 $previousAttrValue = $attrValue;
-                $attrValue = $this->removeUrlSchemeHelper(
-                    $attrValue,
-                    $attrName,
-                    'http',
-                    $attributes,
-                    $tagName,
-                    $htmlMin,
-                );
+                $attrValue = str_replace('http://', '//', $attrValue);
                 if ($attrValue !== $previousAttrValue) {
                     $didChange = true;
                 }
             }
 
-            if ($removeHttpsPrefix && $canRewriteUrlAttributes) {
+            if ($removeHttpsPrefix && $canRemoveScheme && str_contains($attrValue, 'https://')) {
                 $previousAttrValue = $attrValue;
-                $attrValue = $this->removeUrlSchemeHelper(
-                    $attrValue,
-                    $attrName,
-                    'https',
-                    $attributes,
-                    $tagName,
-                    $htmlMin,
-                );
+                $attrValue = str_replace('https://', '//', $attrValue);
                 if ($attrValue !== $previousAttrValue) {
                     $didChange = true;
                 }
@@ -190,6 +186,18 @@ final class OptimizeAttributes implements DomObserver
 
         if ($sortHtmlAttributes) {
             if (!$didChange && !$didRemoveAttribute && $attributesAreSorted && !$hasNamespacedAttribute) {
+                return;
+            }
+
+            if ($attributesAreSorted && !$didRemoveAttribute && !$hasNamespacedAttribute) {
+                foreach ($attrs as $attrName => $attrValue) {
+                    if ($attrValue === $attributes[$attrName]) {
+                        continue;
+                    }
+
+                    $element->setAttribute((string) $attrName, HtmlParser::replaceToPreserveHtmlEntities($attrValue));
+                }
+
                 return;
             }
 
@@ -340,49 +348,6 @@ final class OptimizeAttributes implements DomObserver
         }
 
         return false;
-    }
-
-    /**
-     * @param string[]         $attributes
-     *
-     * @noinspection PhpTooManyParametersInspection
-     */
-    private function removeUrlSchemeHelper(
-        string $attrValue,
-        string $attrName,
-        string $scheme,
-        array $attributes,
-        string $tagName,
-        HtmlMinInterface $htmlMin,
-    ): string {
-        /** @noinspection InArrayCanBeUsedInspection */
-        if (
-            !(isset($attributes['rel']) && $attributes['rel'] === 'external')
-            &&
-            !(isset($attributes['target']) && $attributes['target'] === '_blank')
-            &&
-            (
-                (
-                    $attrName === 'href'
-                    &&
-                    (
-                        !$htmlMin->isdoKeepHttpAndHttpsPrefixOnExternalAttributes()
-                        ||
-                        $tagName === 'link'
-                    )
-                )
-                ||
-                $attrName === 'src'
-                ||
-                $attrName === 'srcset'
-                ||
-                $attrName === 'action'
-            )
-        ) {
-            $attrValue = str_replace($scheme . '://', '//', $attrValue);
-        }
-
-        return $attrValue;
     }
 
     private function sortCssClassNames(int|string $attrName, string $attrValue): string

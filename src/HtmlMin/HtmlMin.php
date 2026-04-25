@@ -28,6 +28,8 @@ class HtmlMin implements HtmlMinInterface
 
     private const string ATTR_WHITESPACE_REPLACEMENT = ' $1$2';
 
+    private const string UNQUOTED_ATTRIBUTE_VALUE_FORBIDDEN_CHARS = "\"'=<>` \t\r\n\f";
+
     private static string $regExSpace = "/[[:space:]]{2,}|[\r\n]/u";
 
     /**
@@ -468,65 +470,77 @@ class HtmlMin implements HtmlMinInterface
 
     private function domNodeAttributesToString(DOMNode $node): string
     {
+        if ($node->attributes === null || $node->attributes->length === 0) {
+            return '';
+        }
+
+        $doOptimizeAttributes = $this->doOptimizeAttributes;
+        $doRemoveOmittedQuotes = $this->doRemoveOmittedQuotes;
+
         // Remove quotes around attribute values, when allowed (<p class="foo"> → <p class=foo>)
         $attr_str = '';
-        if ($node->attributes !== null) {
-            /** @var DOMAttr $attribute */
-            foreach ($node->attributes as $attribute) {
-                $attr_str .= $attribute->name;
+        /** @var DOMAttr $attribute */
+        foreach ($node->attributes as $attribute) {
+            $attrName = $attribute->name;
+            $attrValue = $attribute->value;
 
-                if (
-                    $this->doOptimizeAttributes
-                    &&
-                    isset(self::$booleanAttributes[$attribute->name])
-                ) {
-                    $attr_str .= ' ';
-
-                    continue;
-                }
-
-                $attr_str .= '=';
-
-                // http://www.whatwg.org/specs/web-apps/current-work/multipage/syntax.html#attributes-0
-                $omit_quotes = $this->doRemoveOmittedQuotes
-                               &&
-                               $attribute->value !== ''
-                               &&
-                               !str_starts_with($attribute->name, '____SIMPLE_HTML_DOM__VOKU')
-                               &&
-                               !str_contains($attribute->name, ' ')
-                               &&
-                               preg_match('/["\'=<>` \t\r\n\f]/', $attribute->value) === 0;
-
-                $quoteTmp = '"';
-                if (
-                    !$omit_quotes
-                    &&
-                    str_contains($attribute->value, '"')
-                ) {
-                    $quoteTmp = "'";
-                }
-
-                if (
-                    $this->doOptimizeAttributes
-                    &&
-                    (
-                        $attribute->name === 'srcset'
-                        ||
-                        $attribute->name === 'sizes'
-                    )
-                ) {
-                    $attr_val = preg_replace(self::$regExSpace, ' ', $attribute->value);
-                } else {
-                    $attr_val = $attribute->value;
-                }
-
-                $attr_str .= ($omit_quotes ? '' : $quoteTmp) . $attr_val . ($omit_quotes ? '' : $quoteTmp);
+            if ($attr_str !== '') {
                 $attr_str .= ' ';
+            }
+
+            $attr_str .= $attrName;
+
+            if ($doOptimizeAttributes && isset(self::$booleanAttributes[$attrName])) {
+                continue;
+            }
+
+            $attr_str .= '=';
+
+            // http://www.whatwg.org/specs/web-apps/current-work/multipage/syntax.html#attributes-0
+            $omit_quotes = $doRemoveOmittedQuotes
+                           &&
+                           $attrValue !== ''
+                           &&
+                           !str_starts_with($attrName, '____SIMPLE_HTML_DOM__VOKU')
+                           &&
+                           !str_contains($attrName, ' ')
+                           &&
+                           strpbrk($attrValue, self::UNQUOTED_ATTRIBUTE_VALUE_FORBIDDEN_CHARS) === false;
+
+            if (
+                $doOptimizeAttributes
+                &&
+                (
+                    $attrName === 'srcset'
+                    ||
+                    $attrName === 'sizes'
+                )
+                &&
+                (
+                    str_contains($attrValue, "\n")
+                    ||
+                    str_contains($attrValue, "\r")
+                    ||
+                    str_contains($attrValue, "\t")
+                    ||
+                    str_contains($attrValue, '  ')
+                )
+            ) {
+                $normalizedAttrValue = preg_replace(self::$regExSpace, ' ', $attrValue);
+                if ($normalizedAttrValue !== null) {
+                    $attrValue = $normalizedAttrValue;
+                }
+            }
+
+            if ($omit_quotes) {
+                $attr_str .= $attrValue;
+            } else {
+                $quoteTmp = str_contains($attrValue, '"') ? "'" : '"';
+                $attr_str .= $quoteTmp . $attrValue . $quoteTmp;
             }
         }
 
-        return trim($attr_str);
+        return $attr_str;
     }
 
     private function domNodeClosingTagOptional(DOMNode $node): bool
@@ -813,7 +827,10 @@ class HtmlMin implements HtmlMinInterface
             }
 
             if ($child instanceof DOMElement) {
-                $parts[] = rtrim('<' . $child->tagName . ' ' . $this->domNodeAttributesToString($child));
+                $attributes = $this->domNodeAttributesToString($child);
+                $parts[] = $attributes === ''
+                    ? '<' . $child->tagName
+                    : '<' . $child->tagName . ' ' . $attributes;
                 $parts[] = '>' . $this->domNodeToString($child);
 
                 if (

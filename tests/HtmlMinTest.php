@@ -225,6 +225,17 @@ final class HtmlMinTest extends TestCase
         );
     }
 
+    public function testSortedAttributesCanUpdateInPlace(): void
+    {
+        $htmlMin = new HtmlMin();
+        $htmlMin->doRemoveHttpPrefixFromAttributes();
+
+        self::assertSame(
+            '<a class=foo href=//example.com id=bar></a>',
+            $htmlMin->minify('<a class="foo" href="http://example.com" id="bar"></a>'),
+        );
+    }
+
     #[DataProvider('provideBoolAttrCases')]
     public function testBoolAttr($input): void
     {
