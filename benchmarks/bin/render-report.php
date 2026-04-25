@@ -10,11 +10,22 @@ require __DIR__ . '/../vendor/autoload.php';
 use Akankov\HtmlMinBench\AdapterRegistry;
 use Akankov\HtmlMinBench\Report\ReportRenderer;
 
-if ($argc < 4) {
+$argv = $_SERVER['argv'] ?? null;
+
+if (
+    !is_array($argv)
+    || !isset($argv[1], $argv[2], $argv[3])
+    || !is_string($argv[1])
+    || !is_string($argv[2])
+    || !is_string($argv[3])
+) {
     fwrite(\STDERR, "Usage: render-report.php <phpbench.xml> <compression.json> <out.md>\n");
     exit(1);
 }
-[$_, $benchPath, $compPath, $outPath] = $argv;
+
+$benchPath = $argv[1];
+$compPath  = $argv[2];
+$outPath   = $argv[3];
 
 $compRaw = json_decode((string) file_get_contents($compPath), true, flags: \JSON_THROW_ON_ERROR);
 if (!is_array($compRaw)) {
@@ -27,7 +38,7 @@ $phpVersion  = is_string($compRaw['php_version'] ?? null) ? $compRaw['php_versio
 $rowsRaw     = is_array($compRaw['rows'] ?? null) ? $compRaw['rows'] : [];
 
 // PHPBench --dump-file emits XML. Parse it into the shape ReportRenderer expects.
-/** @var list<array{adapter:string, fixture:string, ms_per_op:float, stddev:float}> $speed */
+/** @var list<array{adapter:string, fixture:string, ms_per_op:float, stddev:float, peak_memory_mb:float}> $speed */
 $speed = [];
 $xml   = new SimpleXMLElement((string) file_get_contents($benchPath));
 foreach ($xml->suite->benchmark as $benchmark) {
@@ -53,10 +64,11 @@ foreach ($xml->suite->benchmark as $benchmark) {
             }
             // PHPBench time units default to microseconds; convert to ms.
             $speed[] = [
-                'adapter'   => $adapter,
-                'fixture'   => $fixture,
-                'ms_per_op' => (float) $stats['mean']  / 1000,
-                'stddev'    => (float) $stats['stdev'] / 1000,
+                'adapter'        => $adapter,
+                'fixture'        => $fixture,
+                'ms_per_op'      => (float) $stats['mean']  / 1000,
+                'stddev'         => (float) $stats['stdev'] / 1000,
+                'peak_memory_mb' => peakMemoryMb($variant),
             ];
         }
     }
@@ -117,3 +129,16 @@ $md = ReportRenderer::render([
 
 file_put_contents($outPath, $md);
 echo "wrote $outPath\n";
+
+function peakMemoryMb(SimpleXMLElement $variant): float
+{
+    $peakBytes = 0;
+    foreach ($variant->iteration as $iteration) {
+        $iterationPeak = (int) ($iteration['mem-peak'] ?? 0);
+        if ($iterationPeak > $peakBytes) {
+            $peakBytes = $iterationPeak;
+        }
+    }
+
+    return $peakBytes / 1024 / 1024;
+}

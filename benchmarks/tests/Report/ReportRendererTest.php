@@ -18,7 +18,7 @@ final class ReportRendererTest extends TestCase
      *         host:string,
      *         adapters:list<array{name:string,version:string,unsafe:bool}>
      *     },
-     *     speed: list<array{adapter:string, fixture:string, ms_per_op:float, stddev:float}>,
+     *     speed: list<array{adapter:string, fixture:string, ms_per_op:float, stddev:float, peak_memory_mb:float}>,
      *     compression: list<array{adapter:string, fixture:string, ratio_raw:float, ratio_gz:float, parses_ok:bool}>
      * }
      */
@@ -36,8 +36,8 @@ final class ReportRendererTest extends TestCase
                 ],
             ],
             'speed' => [
-                ['adapter' => 'akankov/html-min',  'fixture' => 'wiki', 'ms_per_op' => 12.3, 'stddev' => 0.5],
-                ['adapter' => 'abordage/html-min', 'fixture' => 'wiki', 'ms_per_op' => 3.1,  'stddev' => 0.2],
+                ['adapter' => 'akankov/html-min',  'fixture' => 'wiki', 'ms_per_op' => 12.3, 'stddev' => 0.5, 'peak_memory_mb' => 6.2],
+                ['adapter' => 'abordage/html-min', 'fixture' => 'wiki', 'ms_per_op' => 3.1,  'stddev' => 0.2, 'peak_memory_mb' => 4.8],
             ],
             'compression' => [
                 ['adapter' => 'akankov/html-min',  'fixture' => 'wiki', 'ratio_raw' => 0.75, 'ratio_gz' => 0.85, 'parses_ok' => true],
@@ -58,6 +58,7 @@ final class ReportRendererTest extends TestCase
     {
         $md = ReportRenderer::render($this->fixtureInput());
         self::assertStringContainsString('## Speed', $md);
+        self::assertStringContainsString('## Peak Memory', $md);
         self::assertStringContainsString('## Compression', $md);
         self::assertStringContainsString('akankov/html-min', $md);
         self::assertStringContainsString('abordage/html-min', $md);
@@ -74,6 +75,12 @@ final class ReportRendererTest extends TestCase
     {
         $md = ReportRenderer::render($this->fixtureInput());
         self::assertMatchesRegularExpression('/\*\*3\.1\s*±/', $md);
+    }
+
+    public function testLowestMemoryCellIsBold(): void
+    {
+        $md = ReportRenderer::render($this->fixtureInput());
+        self::assertStringContainsString('**4.8 MiB**', $md);
     }
 
     public function testParseFailureIsNotMarkedBest(): void

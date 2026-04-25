@@ -1,6 +1,6 @@
 # html-min benchmarks
 
-Measures `akankov/html-min` against four other PHP HTML minifiers on speed and compression ratio.
+Measures `akankov/html-min` against four other PHP HTML minifiers on speed, peak memory, and compression ratio.
 Results are published to `../latest.md` by `make bench` run from the library root.
 
 ## Run
