@@ -58,20 +58,20 @@ rector-check: ## Preview rector refactors without modifying files
 bench-install: ## Install composer dependencies for benchmarks
 	$(BENCH_COMPOSER) install --no-interaction --no-progress
 
-bench: ## Run full benchmark suite and write docs/benchmarks/latest.md
-	mkdir -p docs/benchmarks benchmarks/build
+bench: ## Run full benchmark suite and write src/docs/benchmarks/latest.md
+	mkdir -p src/docs/benchmarks benchmarks/build
 	$(BENCH_PHP) vendor/bin/phpbench run src/Bench/MinifyBench.php --dump-file=build/bench.xml
 	$(BENCH_PHP) bin/compression-report.php > benchmarks/build/compression.json
-	$(BENCH_PHP) bin/render-report.php build/bench.xml build/compression.json ../docs/benchmarks/latest.md
+	$(BENCH_PHP) bin/render-report.php build/bench.xml build/compression.json ../src/docs/benchmarks/latest.md
 
 bench-quick: ## Faster bench for local loops (fewer iterations)
-	mkdir -p docs/benchmarks benchmarks/build
+	mkdir -p src/docs/benchmarks benchmarks/build
 	$(BENCH_PHP) vendor/bin/phpbench run src/Bench/MinifyBench.php --iterations=2 --revs=3 --warmup=1 --dump-file=build/bench.xml
 	$(BENCH_PHP) bin/compression-report.php > benchmarks/build/compression.json
-	$(BENCH_PHP) bin/render-report.php build/bench.xml build/compression.json ../docs/benchmarks/latest.md
+	$(BENCH_PHP) bin/render-report.php build/bench.xml build/compression.json ../src/docs/benchmarks/latest.md
 
-bench-baseline: ## Copy docs/benchmarks/latest.md to baseline.md for release-diff purposes
-	cp docs/benchmarks/latest.md docs/benchmarks/baseline.md
+bench-baseline: ## Copy src/docs/benchmarks/latest.md to baseline.md for release-diff purposes
+	cp src/docs/benchmarks/latest.md src/docs/benchmarks/baseline.md
 
 bench-cs: ## Fix code style in benchmarks
 	$(PHP) vendor/bin/php-cs-fixer fix
