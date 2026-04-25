@@ -33,6 +33,9 @@ use const XML_PI_NODE;
  */
 final class HtmlParser
 {
+    /** @var array<string, string>|null */
+    private static ?array $entityRestoreMap = null;
+
     /**
      * HTML5 void elements — serialized without a closing tag and without the
      * XHTML self-closing slash.
@@ -329,6 +332,10 @@ final class HtmlParser
      */
     private static function buildEntityRestoreMap(): array
     {
+        if (self::$entityRestoreMap !== null) {
+            return self::$entityRestoreMap;
+        }
+
         $placeholders = array_flip(self::URL_CHAR_PLACEHOLDERS)
                       + array_flip(self::ENTITY_CHAR_PLACEHOLDERS);
         $map = $placeholders;
@@ -344,7 +351,7 @@ final class HtmlParser
         $map[self::SPECIAL_SCRIPT_TAG]              = 'script';
         $map['</' . self::SPECIAL_SCRIPT_TAG]       = '</script';
 
-        return $map;
+        return self::$entityRestoreMap = $map;
     }
 
     /**
@@ -382,7 +389,7 @@ final class HtmlParser
     }
 
     /**
-     * @return DOMElement[]
+     * @return DOMNode[]
      */
     public static function findAll(DOMNode $root, string $selector): array
     {
@@ -420,7 +427,7 @@ final class HtmlParser
                     }
                 }
 
-                /** @var DOMElement[] $out */
+                /** @var DOMNode[] $out */
                 return $out;
             }
         }
@@ -441,7 +448,7 @@ final class HtmlParser
             $out[] = $node;
         }
 
-        /** @var DOMElement[] $out */
+        /** @var DOMNode[] $out */
         return $out;
     }
 
