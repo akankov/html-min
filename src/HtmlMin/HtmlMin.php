@@ -1300,8 +1300,6 @@ class HtmlMin implements HtmlMinInterface
      *
      * <!--[if expression]> HTML <![endif]-->
      * <![if expression]> HTML <![endif]>
-     *
-     * @param string $comment
      */
     private function isConditionalComment(string $comment): bool
     {
@@ -1326,8 +1324,6 @@ class HtmlMin implements HtmlMinInterface
 
     /**
      * Check if the current string is an special comment.
-     *
-     * @param string $comment
      */
     private function isSpecialComment(string $comment): bool
     {
