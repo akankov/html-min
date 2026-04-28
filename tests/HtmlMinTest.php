@@ -1686,6 +1686,46 @@ h1 {
         self::assertSame($expected, $htmlMin->minify($html));
     }
 
+    public function testRelativeLinksRejectLookalikeDomains(): void
+    {
+        // www.example.com.evil.com is a different host — must not be rewritten
+        $html = '<a href="http://www.example.com.evil.com/path">x</a>';
+        $expected = '<a href=http://www.example.com.evil.com/path>x</a>';
+
+        $htmlMin = new HtmlMin();
+        $htmlMin->doMakeSameDomainsLinksRelative(['www.example.com']);
+        self::assertSame($expected, $htmlMin->minify($html));
+
+        // hyphen-extension is also a different domain
+        $html = '<a href="http://www.example.com-evil.com/path">x</a>';
+        $expected = '<a href=http://www.example.com-evil.com/path>x</a>';
+
+        $htmlMin = new HtmlMin();
+        $htmlMin->doMakeSameDomainsLinksRelative(['www.example.com']);
+        self::assertSame($expected, $htmlMin->minify($html));
+    }
+
+    public function testHttpPrefixRemovalOnlyAffectsLeadingScheme(): void
+    {
+        // mid-string http:// inside a query parameter must not be touched
+        $html = '<a href="http://example.com/?to=http://other.com">x</a>';
+        $expected = '<a href="//example.com/?to=http://other.com">x</a>';
+
+        $htmlMin = new HtmlMin();
+        $htmlMin->doRemoveHttpPrefixFromAttributes();
+        $htmlMin->doKeepHttpAndHttpsPrefixOnExternalAttributes(false);
+        self::assertSame($expected, $htmlMin->minify($html));
+
+        // same guard for https://
+        $html = '<a href="https://example.com/?to=https://other.com">x</a>';
+        $expected = '<a href="//example.com/?to=https://other.com">x</a>';
+
+        $htmlMin = new HtmlMin();
+        $htmlMin->doRemoveHttpsPrefixFromAttributes();
+        $htmlMin->doKeepHttpAndHttpsPrefixOnExternalAttributes(false);
+        self::assertSame($expected, $htmlMin->minify($html));
+    }
+
     public function testNullParentNode(): void
     {
         $html = ' <nocompress>foo</nocompress> ';
