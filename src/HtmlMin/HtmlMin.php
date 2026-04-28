@@ -173,14 +173,6 @@ class HtmlMin implements HtmlMinInterface
     /**
      * @var string[]
      */
-    private array $domainsToRemoveHttpPrefixFromAttributes = [
-        'google.com',
-        'google.de',
-    ];
-
-    /**
-     * @var string[]
-     */
     private array $specialHtmlCommentsStaringWith = [];
 
     /**
@@ -978,15 +970,6 @@ class HtmlMin implements HtmlMinInterface
         return '';
     }
 
-    /**
-     * @return string[]
-     */
-    #[Override]
-    public function getDomainsToRemoveHttpPrefixFromAttributes(): array
-    {
-        return $this->domainsToRemoveHttpPrefixFromAttributes;
-    }
-
     #[Override]
     public function isDoOptimizeAttributes(): bool
     {
@@ -1631,16 +1614,6 @@ class HtmlMin implements HtmlMinInterface
             . preg_replace(self::ATTR_WHITESPACE_PATTERN, self::ATTR_WHITESPACE_REPLACEMENT, $matches[2])
             . $matches[3]
             . '>';
-    }
-
-    /**
-     * @param string[] $domainsToRemoveHttpPrefixFromAttributes
-     */
-    public function setDomainsToRemoveHttpPrefixFromAttributes(array $domainsToRemoveHttpPrefixFromAttributes): self
-    {
-        $this->domainsToRemoveHttpPrefixFromAttributes = $domainsToRemoveHttpPrefixFromAttributes;
-
-        return $this;
     }
 
     /**

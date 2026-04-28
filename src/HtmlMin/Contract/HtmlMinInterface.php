@@ -64,9 +64,4 @@ interface HtmlMinInterface
      * @return string[]
      */
     public function getLocalDomains(): array;
-
-    /**
-     * @return string[]
-     */
-    public function getDomainsToRemoveHttpPrefixFromAttributes(): array;
 }

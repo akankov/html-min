@@ -351,8 +351,7 @@ final class HtmlMinTest extends TestCase
     {
         // init
         $htmlMin = new HtmlMin();
-        $htmlMin->doRemoveHttpPrefixFromAttributes()
-                ->setDomainsToRemoveHttpPrefixFromAttributes(['csszengarden.com']);
+        $htmlMin->doRemoveHttpPrefixFromAttributes();
 
         $html = str_replace(
             [
@@ -659,8 +658,7 @@ final class HtmlMinTest extends TestCase
     {
         // init
         $htmlMin = new HtmlMin();
-        $htmlMin->doRemoveHttpPrefixFromAttributes()
-                ->setDomainsToRemoveHttpPrefixFromAttributes(['henkel-lifetimes.de']);
+        $htmlMin->doRemoveHttpPrefixFromAttributes();
 
         $html = str_replace(["\r\n", "\r", "\n"], "\n", (string) file_get_contents(__DIR__ . '/fixtures/hlt.html'));
         $expected = str_replace(
