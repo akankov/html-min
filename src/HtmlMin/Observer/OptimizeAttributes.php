@@ -68,7 +68,7 @@ final class OptimizeAttributes implements DomObserver
         $makeSameDomainsLinksRelative = $htmlMin->isDoMakeSameDomainsLinksRelative();
         $removeHttpPrefix = $htmlMin->isDoRemoveHttpPrefixFromAttributes();
         $removeHttpsPrefix = $htmlMin->isDoRemoveHttpsPrefixFromAttributes();
-        $keepHttpAndHttpsPrefixOnExternalAttributes = $htmlMin->isdoKeepHttpAndHttpsPrefixOnExternalAttributes();
+        $keepHttpAndHttpsPrefixOnExternalAttributes = $htmlMin->isDoKeepHttpAndHttpsPrefixOnExternalAttributes();
 
         $attributes = HtmlParser::getAllAttributes($element);
         if ($attributes === []) {

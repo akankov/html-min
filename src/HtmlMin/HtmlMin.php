@@ -1072,7 +1072,7 @@ class HtmlMin implements HtmlMinInterface
     }
 
     #[Override]
-    public function isdoKeepHttpAndHttpsPrefixOnExternalAttributes(): bool
+    public function isDoKeepHttpAndHttpsPrefixOnExternalAttributes(): bool
     {
         return $this->doKeepHttpAndHttpsPrefixOnExternalAttributes;
     }

@@ -52,7 +52,7 @@ interface HtmlMinInterface
 
     public function isDoRemoveHttpsPrefixFromAttributes(): bool;
 
-    public function isdoKeepHttpAndHttpsPrefixOnExternalAttributes(): bool;
+    public function isDoKeepHttpAndHttpsPrefixOnExternalAttributes(): bool;
 
     public function isDoMakeSameDomainsLinksRelative(): bool;
 
