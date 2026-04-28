@@ -59,6 +59,10 @@ final class OptimizeAttributes implements DomObserver
     #[Override]
     public function domElementAfterMinification(DOMElement $element, HtmlMinInterface $htmlMin): void
     {
+        if (!$htmlMin->isDoOptimizeAttributes()) {
+            return;
+        }
+
         if ($element->attributes->length === 0) {
             return;
         }

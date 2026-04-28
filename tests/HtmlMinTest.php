@@ -1705,6 +1705,21 @@ h1 {
         self::assertSame($expected, $htmlMin->minify($html));
     }
 
+    public function testDoOptimizeAttributesFalseSkipsObserver(): void
+    {
+        // doOptimizeAttributes(false) is a master kill-switch: even if a
+        // sub-flag like doRemoveHttpPrefixFromAttributes is on, the
+        // OptimizeAttributes observer must not mutate attribute values.
+        $html = '<a href="http://example.com/">x</a>';
+        $expected = '<a href=http://example.com/>x</a>';
+
+        $htmlMin = new HtmlMin();
+        $htmlMin->doOptimizeAttributes(false);
+        $htmlMin->doRemoveHttpPrefixFromAttributes(true);
+
+        self::assertSame($expected, $htmlMin->minify($html));
+    }
+
     public function testRelativeLinksRejectLookalikeDomains(): void
     {
         // www.example.com.evil.com is a different host — must not be rewritten
