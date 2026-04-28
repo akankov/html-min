@@ -37,7 +37,7 @@ test-all: ## Run phpunit on PHP 8.3, 8.4, 8.5
 	done
 
 phpstan: ## Run phpstan at level max
-	$(PHP) vendor/bin/phpstan analyse --no-progress
+	$(PHP) vendor/bin/phpstan analyse --no-progress --memory-limit=512M
 
 phan-image: ## Build docker image with ext-ast for phan
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $(PHAN_IMAGE) -f docker/phan.Dockerfile docker

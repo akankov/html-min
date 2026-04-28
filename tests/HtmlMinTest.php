@@ -23,6 +23,9 @@ final class HtmlMinTest extends TestCase
         self::assertSame('', (new HtmlMin())->minify(''));
     }
 
+    /**
+     * @return iterable<int, array{string}>
+     */
     public static function provideBoolAttrCases(): iterable
     {
         return [
@@ -41,6 +44,9 @@ final class HtmlMinTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<int, array{string, string}>
+     */
     public static function provideMultipleSpacesCases(): iterable
     {
         return [
@@ -107,6 +113,9 @@ final class HtmlMinTest extends TestCase
         self::assertSame($expectd, $compressedHtml);
     }
 
+    /**
+     * @return iterable<int, array{string, string}>
+     */
     public static function provideNewLinesTabsReturnsCases(): iterable
     {
         return [
@@ -125,6 +134,9 @@ final class HtmlMinTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<int, array{string, string}>
+     */
     public static function provideSpaceAfterGtCases(): iterable
     {
         return [
@@ -145,6 +157,9 @@ final class HtmlMinTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<int, array{string, string}>
+     */
     public static function provideSpaceBeforeLtCases(): iterable
     {
         return [
@@ -159,6 +174,9 @@ final class HtmlMinTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<int, array{string, string}>
+     */
     public static function provideSpecialCharacterEncodingCases(): iterable
     {
         return [
@@ -184,6 +202,9 @@ final class HtmlMinTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<int, array{string, string}>
+     */
     public static function provideTrimCases(): iterable
     {
         return [
@@ -237,7 +258,7 @@ final class HtmlMinTest extends TestCase
     }
 
     #[DataProvider('provideBoolAttrCases')]
-    public function testBoolAttr($input): void
+    public function testBoolAttr(string $input): void
     {
         $minifier = new HtmlMin();
 
@@ -340,7 +361,7 @@ final class HtmlMinTest extends TestCase
                 "\n",
             ],
             "\n",
-            file_get_contents(__DIR__ . '/fixtures/base1.html'),
+            (string) file_get_contents(__DIR__ . '/fixtures/base1.html'),
         );
         $expected = str_replace(
             [
@@ -349,7 +370,7 @@ final class HtmlMinTest extends TestCase
                 "\n",
             ],
             "\n",
-            file_get_contents(__DIR__ . '/fixtures/base1_result.html'),
+            (string) file_get_contents(__DIR__ . '/fixtures/base1_result.html'),
         );
 
         self::assertSame(trim($expected), $htmlMin->minify($html));
@@ -363,7 +384,7 @@ final class HtmlMinTest extends TestCase
                 "\n",
             ],
             "\n",
-            file_get_contents(__DIR__ . '/fixtures/base2.html'),
+            (string) file_get_contents(__DIR__ . '/fixtures/base2.html'),
         );
         $expected = str_replace(
             [
@@ -372,7 +393,7 @@ final class HtmlMinTest extends TestCase
                 "\n",
             ],
             "\n",
-            file_get_contents(__DIR__ . '/fixtures/base2_result.html'),
+            (string) file_get_contents(__DIR__ . '/fixtures/base2_result.html'),
         );
 
         self::assertSame(trim($expected), $htmlMin->minify($html));
@@ -386,7 +407,7 @@ final class HtmlMinTest extends TestCase
                 "\n",
             ],
             "\n",
-            file_get_contents(__DIR__ . '/fixtures/base3.html'),
+            (string) file_get_contents(__DIR__ . '/fixtures/base3.html'),
         );
         $expected = str_replace(
             [
@@ -395,7 +416,7 @@ final class HtmlMinTest extends TestCase
                 "\n",
             ],
             "\n",
-            file_get_contents(__DIR__ . '/fixtures/base3_result.html'),
+            (string) file_get_contents(__DIR__ . '/fixtures/base3_result.html'),
         );
 
         self::assertSame(trim($expected), $htmlMin->minify($html));
@@ -409,7 +430,7 @@ final class HtmlMinTest extends TestCase
                 "\n",
             ],
             "\n",
-            file_get_contents(__DIR__ . '/fixtures/base4.html'),
+            (string) file_get_contents(__DIR__ . '/fixtures/base4.html'),
         );
         $expected = str_replace(
             [
@@ -418,7 +439,7 @@ final class HtmlMinTest extends TestCase
                 "\n",
             ],
             "\n",
-            file_get_contents(__DIR__ . '/fixtures/base4_result.html'),
+            (string) file_get_contents(__DIR__ . '/fixtures/base4_result.html'),
         );
 
         self::assertSame($expected, $htmlMin->minify($html));
@@ -620,7 +641,7 @@ final class HtmlMinTest extends TestCase
         // init
         $htmlMin = new HtmlMin();
 
-        $html = str_replace(["\r\n", "\r", "\n"], "\n", file_get_contents(__DIR__ . '/fixtures/code.html'));
+        $html = str_replace(["\r\n", "\r", "\n"], "\n", (string) file_get_contents(__DIR__ . '/fixtures/code.html'));
         $expected = str_replace(
             [
                 "\r\n",
@@ -628,7 +649,7 @@ final class HtmlMinTest extends TestCase
                 "\n",
             ],
             "\n",
-            file_get_contents(__DIR__ . '/fixtures/code_result.html'),
+            (string) file_get_contents(__DIR__ . '/fixtures/code_result.html'),
         );
 
         self::assertSame(trim($expected), $htmlMin->minify($html));
@@ -641,7 +662,7 @@ final class HtmlMinTest extends TestCase
         $htmlMin->doRemoveHttpPrefixFromAttributes()
                 ->setDomainsToRemoveHttpPrefixFromAttributes(['henkel-lifetimes.de']);
 
-        $html = str_replace(["\r\n", "\r", "\n"], "\n", file_get_contents(__DIR__ . '/fixtures/hlt.html'));
+        $html = str_replace(["\r\n", "\r", "\n"], "\n", (string) file_get_contents(__DIR__ . '/fixtures/hlt.html'));
         $expected = str_replace(
             [
                 "\r\n",
@@ -649,7 +670,7 @@ final class HtmlMinTest extends TestCase
                 "\n",
             ],
             "\n",
-            file_get_contents(__DIR__ . '/fixtures/hlt_result.html'),
+            (string) file_get_contents(__DIR__ . '/fixtures/hlt_result.html'),
         );
 
         self::assertSame(trim($expected), $htmlMin->minify($html, true));
@@ -1413,42 +1434,42 @@ h1 {
     }
 
     #[DataProvider('provideMultipleSpacesCases')]
-    public function testMultipleSpaces($input, $expected): void
+    public function testMultipleSpaces(string $input, string $expected): void
     {
         $actual = (new HtmlMin())->minify($input);
         self::assertSame($expected, $actual);
     }
 
     #[DataProvider('provideNewLinesTabsReturnsCases')]
-    public function testNewLinesTabsReturns($input, $expected): void
+    public function testNewLinesTabsReturns(string $input, string $expected): void
     {
         $actual = (new HtmlMin())->minify($input);
         self::assertSame($expected, $actual);
     }
 
     #[DataProvider('provideSpaceAfterGtCases')]
-    public function testSpaceAfterGt($input, $expected): void
+    public function testSpaceAfterGt(string $input, string $expected): void
     {
         $actual = (new HtmlMin())->minify($input);
         self::assertSame($expected, $actual);
     }
 
     #[DataProvider('provideSpaceBeforeLtCases')]
-    public function testSpaceBeforeLt($input, $expected): void
+    public function testSpaceBeforeLt(string $input, string $expected): void
     {
         $actual = (new HtmlMin())->minify($input);
         self::assertSame($expected, $actual, 'tested: ' . $input);
     }
 
     #[DataProvider('provideSpecialCharacterEncodingCases')]
-    public function testSpecialCharacterEncoding($input, $expected): void
+    public function testSpecialCharacterEncoding(string $input, string $expected): void
     {
         $actual = (new HtmlMin())->minify($input, true);
         self::assertSame($expected, $actual);
     }
 
     #[DataProvider('provideTrimCases')]
-    public function testTrim($input, $expected): void
+    public function testTrim(string $input, string $expected): void
     {
         $actual = (new HtmlMin())->minify($input);
         self::assertSame($expected, $actual);
