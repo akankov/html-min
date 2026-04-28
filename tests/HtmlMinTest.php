@@ -1709,4 +1709,25 @@ h1 {
         $htmlMin->doOptimizeViaHtmlDomParser(true);
         self::assertSame($expected, $htmlMin->minify($html));
     }
+
+    public function testDoctypeStateDoesNotLeakBetweenMinifyCalls(): void
+    {
+        $xhtml = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><body><p>x</p></body></html>';
+        $html4 = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Strict//EN" "http://www.w3.org/TR/html4/strict.dtd"><html><body><p>x</p></body></html>';
+        $html5NoDoctype = '<html><body><p>x</p></body></html>';
+
+        $htmlMin = new HtmlMin();
+
+        $htmlMin->minify($xhtml);
+        self::assertTrue($htmlMin->isXHTML(), 'XHTML must be detected on first call');
+
+        $htmlMin->minify($html5NoDoctype);
+        self::assertFalse($htmlMin->isXHTML(), 'isXHTML must be reset for input without an XHTML doctype');
+
+        $htmlMin->minify($html4);
+        self::assertTrue($htmlMin->isHTML4(), 'HTML4 must be detected after a subsequent call');
+
+        $htmlMin->minify($html5NoDoctype);
+        self::assertFalse($htmlMin->isHTML4(), 'isHTML4 must be reset for input without an HTML4 doctype');
+    }
 }

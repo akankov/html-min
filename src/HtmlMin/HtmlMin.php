@@ -1158,8 +1158,12 @@ class HtmlMin implements HtmlMinInterface
             return '';
         }
 
-        // reset
+        // reset per-call state so successive minify() calls on the same instance start clean
         $this->protectedChildNodes = [];
+        $this->protected_tags_counter = 0;
+        $this->withDocType = false;
+        $this->isHTML4 = false;
+        $this->isXHTML = false;
 
         // save old content
         $origHtml = $html;
