@@ -101,7 +101,11 @@ use Akankov\HtmlMin\HtmlMin;
 
 final class StripDataTestIds implements DomObserver
 {
-    public function notifyDomNodeManipulationEvent(\DOMElement $element, HtmlMinInterface $htmlMin): void
+    public function domElementBeforeMinification(\DOMElement $element, HtmlMinInterface $htmlMin): void
+    {
+    }
+
+    public function domElementAfterMinification(\DOMElement $element, HtmlMinInterface $htmlMin): void
     {
         if ($element->hasAttribute('data-testid')) {
             $element->removeAttribute('data-testid');
