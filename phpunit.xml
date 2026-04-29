@@ -6,6 +6,9 @@
          colors="true"
          executionOrder="depends,defects"
          failOnRisky="true"
+         failOnWarning="true"
+         failOnDeprecation="true"
+         failOnNotice="true"
          displayDetailsOnTestsThatTriggerDeprecations="true"
          displayDetailsOnTestsThatTriggerWarnings="true"
          displayDetailsOnTestsThatTriggerNotices="true"
@@ -15,7 +18,9 @@
             <directory>tests</directory>
         </testsuite>
     </testsuites>
-    <source>
+    <source restrictNotices="true"
+            restrictWarnings="true"
+            ignoreIndirectDeprecations="true">
         <include>
             <directory suffix=".php">src</directory>
         </include>
