@@ -1,0 +1,62 @@
+name: Feature request
+description: Suggest a parser, minification, configuration, or documentation improvement.
+title: "Feature: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please describe the use case and expected output clearly.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I have searched existing issues.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What limitation or use case should this solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior, API, or documentation change you want.
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example input and output
+      description: Include HTML before and after minification when applicable.
+      render: html
+
+  - type: dropdown
+    id: compatibility
+    attributes:
+      label: Could this change existing minified output?
+      options:
+        - "No"
+        - "Yes"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Mention workarounds or caller-side solutions if any.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add links, prior art, or benchmark data if relevant.
