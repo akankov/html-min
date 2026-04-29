@@ -1771,6 +1771,36 @@ h1 {
         self::assertSame($expected, $htmlMin->minify($html));
     }
 
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideDefaultAttributesAreRemovedCases(): iterable
+    {
+        return [
+            'form method=get'                            => ['<form method="get"><input name="x"></form>', '<form><input name=x></form>'],
+            'form autocomplete=on'                       => ['<form autocomplete="on"><input name="x"></form>', '<form><input name=x></form>'],
+            'form enctype default'                       => ['<form enctype="application/x-www-form-urlencoded"><input name="x"></form>', '<form><input name=x></form>'],
+            'input type=text'                            => ['<form><input type="text" name="x"></form>', '<form><input name=x></form>'],
+            'textarea wrap=soft'                         => ['<form><textarea wrap="soft" name="x">y</textarea></form>', '<form><textarea name=x>y</textarea></form>'],
+            'area shape=rect'                            => ['<map name="m"><area shape="rect" coords="1,2,3,4"></map>', '<map name=m><area coords=1,2,3,4></map>'],
+            'th scope=auto'                              => ['<table><tr><th scope="auto">h</th></tr></table>', '<table><tr><th>h</table>'],
+            'ol type=decimal'                            => ['<ol type="decimal"><li>x</li></ol>', '<ol><li>x</ol>'],
+            'ol start=1'                                 => ['<ol start="1"><li>x</li></ol>', '<ol><li>x</ol>'],
+            'track kind=subtitles'                       => ['<video><track kind="subtitles" src="x.vtt"></video>', '<video><track src=x.vtt></video>'],
+            'spellcheck=default'                         => ['<div spellcheck="default">x</div>', '<div>x</div>'],
+            'draggable=auto'                             => ['<div draggable="auto">x</div>', '<div>x</div>'],
+            'script language=javascript'                 => ['<script language="javascript">var a=1;</script>', '<script>var a=1;</script>'],
+        ];
+    }
+
+    #[DataProvider('provideDefaultAttributesAreRemovedCases')]
+    public function testDefaultAttributesAreRemoved(string $input, string $expected): void
+    {
+        $htmlMin = new HtmlMin();
+        $htmlMin->doRemoveDefaultAttributes(true);
+        self::assertSame($expected, $htmlMin->minify($input));
+    }
+
     public function testNocompressDoesNotProtectSiblings(): void
     {
         // Whitespace inside a sibling element should still collapse even when
