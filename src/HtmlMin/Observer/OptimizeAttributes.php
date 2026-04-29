@@ -59,6 +59,10 @@ final class OptimizeAttributes implements DomObserver
     #[Override]
     public function domElementAfterMinification(DOMElement $element, HtmlMinInterface $htmlMin): void
     {
+        if (!$htmlMin->isDoOptimizeAttributes()) {
+            return;
+        }
+
         if ($element->attributes->length === 0) {
             return;
         }
@@ -68,7 +72,7 @@ final class OptimizeAttributes implements DomObserver
         $makeSameDomainsLinksRelative = $htmlMin->isDoMakeSameDomainsLinksRelative();
         $removeHttpPrefix = $htmlMin->isDoRemoveHttpPrefixFromAttributes();
         $removeHttpsPrefix = $htmlMin->isDoRemoveHttpsPrefixFromAttributes();
-        $keepHttpAndHttpsPrefixOnExternalAttributes = $htmlMin->isdoKeepHttpAndHttpsPrefixOnExternalAttributes();
+        $keepHttpAndHttpsPrefixOnExternalAttributes = $htmlMin->isDoKeepHttpAndHttpsPrefixOnExternalAttributes();
 
         $attributes = HtmlParser::getAllAttributes($element);
         if ($attributes === []) {
@@ -109,7 +113,7 @@ final class OptimizeAttributes implements DomObserver
 
                     $localDomainEscaped = preg_quote($localDomain, '/');
 
-                    $newAttrValue = (string) preg_replace("/^(?:(?:https?:)?\/\/)?{$localDomainEscaped}(?!\w)(?:\/?)/i", '/', $attrValue);
+                    $newAttrValue = (string) preg_replace("/^(?:(?:https?:)?\/\/)?{$localDomainEscaped}(?=[\/:?#]|$)(?:\/?)/i", '/', $attrValue);
                     if ($newAttrValue !== $attrValue) {
                         $attrValue = $newAttrValue;
                         $didChange = true;
@@ -123,9 +127,11 @@ final class OptimizeAttributes implements DomObserver
             // Remove optional "http:"-prefix from attributes.
             // -------------------------------------------------------------------------
 
+            // strip scheme only at the value start or after a comma separator (e.g. srcset entries),
+            // never inside a URL fragment such as a query parameter.
             if ($removeHttpPrefix && $canRemoveScheme && str_contains($attrValue, 'http://')) {
                 $previousAttrValue = $attrValue;
-                $attrValue = str_replace('http://', '//', $attrValue);
+                $attrValue = (string) preg_replace('#(^|,\s*)http://#', '$1//', $attrValue);
                 if ($attrValue !== $previousAttrValue) {
                     $didChange = true;
                 }
@@ -133,7 +139,7 @@ final class OptimizeAttributes implements DomObserver
 
             if ($removeHttpsPrefix && $canRemoveScheme && str_contains($attrValue, 'https://')) {
                 $previousAttrValue = $attrValue;
-                $attrValue = str_replace('https://', '//', $attrValue);
+                $attrValue = (string) preg_replace('#(^|,\s*)https://#', '$1//', $attrValue);
                 if ($attrValue !== $previousAttrValue) {
                     $didChange = true;
                 }

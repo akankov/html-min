@@ -48,9 +48,11 @@ with a native `\DOMDocument` backend and a modernized type surface.
 
 ### Changed
 
-- `DomObserver::notifyDomNodeManipulationEvent()` (renamed from
-  `HtmlMinDomObserverInterface`) now receives `\DOMElement` instead of
-  `voku\helper\SimpleHtmlDomInterface`.
+- `DomObserver` (renamed from `HtmlMinDomObserverInterface`) replaces
+  voku's single `notifyDomNodeManipulationEvent()` with two lifecycle
+  methods, `domElementBeforeMinification()` and
+  `domElementAfterMinification()`, both receiving `\DOMElement` instead
+  of `voku\helper\SimpleHtmlDomInterface`.
 - Placeholder element names switched to hyphen-safe custom-element form
   (`htmlmin-wrapper`, `htmlmin-protected`, etc.) for libxml2 ≥ 2.9.14
   compatibility — no Reflection hacks.

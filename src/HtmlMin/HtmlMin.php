@@ -173,14 +173,6 @@ class HtmlMin implements HtmlMinInterface
     /**
      * @var string[]
      */
-    private array $domainsToRemoveHttpPrefixFromAttributes = [
-        'google.com',
-        'google.de',
-    ];
-
-    /**
-     * @var string[]
-     */
     private array $specialHtmlCommentsStaringWith = [];
 
     /**
@@ -978,15 +970,6 @@ class HtmlMin implements HtmlMinInterface
         return '';
     }
 
-    /**
-     * @return string[]
-     */
-    #[Override]
-    public function getDomainsToRemoveHttpPrefixFromAttributes(): array
-    {
-        return $this->domainsToRemoveHttpPrefixFromAttributes;
-    }
-
     #[Override]
     public function isDoOptimizeAttributes(): bool
     {
@@ -1072,7 +1055,7 @@ class HtmlMin implements HtmlMinInterface
     }
 
     #[Override]
-    public function isdoKeepHttpAndHttpsPrefixOnExternalAttributes(): bool
+    public function isDoKeepHttpAndHttpsPrefixOnExternalAttributes(): bool
     {
         return $this->doKeepHttpAndHttpsPrefixOnExternalAttributes;
     }
@@ -1158,8 +1141,12 @@ class HtmlMin implements HtmlMinInterface
             return '';
         }
 
-        // reset
+        // reset per-call state so successive minify() calls on the same instance start clean
         $this->protectedChildNodes = [];
+        $this->protected_tags_counter = 0;
+        $this->withDocType = false;
+        $this->isHTML4 = false;
+        $this->isXHTML = false;
 
         // save old content
         $origHtml = $html;
@@ -1252,16 +1239,30 @@ class HtmlMin implements HtmlMinInterface
             $html,
         );
 
-        // self closing tags, don't need a trailing slash ...
+        // Normalize void-element forms emitted by the parser/serializer.
+        // HTML5/HTML4 want bare <br>; XHTML wants the canonical <br />.
+        // (phpstan's flow analysis can't see that minifyHtmlDom() above
+        // writes $this->isXHTML, so it narrows the property to its reset
+        // value of false here — hence the explicit guard suppression.)
         $replace = [];
         $replacement = [];
-        foreach (self::$selfClosingTags as $selfClosingTag) {
-            $replace[] = '<' . $selfClosingTag . '/>';
-            $replacement[] = '<' . $selfClosingTag . '>';
-            $replace[] = '<' . $selfClosingTag . ' />';
-            $replacement[] = '<' . $selfClosingTag . '>';
-            $replace[] = '></' . $selfClosingTag . '>';
-            $replacement[] = '>';
+        /** @phpstan-ignore if.alwaysFalse */
+        if ($this->isXHTML) {
+            foreach (self::$selfClosingTags as $selfClosingTag) {
+                $replace[] = '<' . $selfClosingTag . '/>';
+                $replacement[] = '<' . $selfClosingTag . ' />';
+                $replace[] = '></' . $selfClosingTag . '>';
+                $replacement[] = ' />';
+            }
+        } else {
+            foreach (self::$selfClosingTags as $selfClosingTag) {
+                $replace[] = '<' . $selfClosingTag . '/>';
+                $replacement[] = '<' . $selfClosingTag . '>';
+                $replace[] = '<' . $selfClosingTag . ' />';
+                $replacement[] = '<' . $selfClosingTag . '>';
+                $replace[] = '></' . $selfClosingTag . '>';
+                $replacement[] = '>';
+            }
         }
         $html = str_replace(
             $replace,
@@ -1398,7 +1399,7 @@ class HtmlMin implements HtmlMinInterface
         // Protect <nocompress> HTML tags first.
         // -------------------------------------------------------------------------
 
-        $this->protectTagHelper($dom, 'nocompress');
+        $this->protectTagHelper($dom, 'nocompress', true);
 
         // -------------------------------------------------------------------------
         // Notify the Observer before the minification.
@@ -1469,7 +1470,7 @@ class HtmlMin implements HtmlMinInterface
         }
     }
 
-    private function protectTagHelper(DOMDocument $dom, string $selector): void
+    private function protectTagHelper(DOMDocument $dom, string $selector, bool $useElementScope = false): void
     {
         foreach (HtmlParser::findAll($dom, $selector) as $element) {
             if (!$element instanceof DOMElement) {
@@ -1480,12 +1481,22 @@ class HtmlMin implements HtmlMinInterface
                 continue;
             }
 
-            $parentNode = $element->parentNode;
-            if ($parentNode->nodeValue !== null) {
-                $this->protectedChildNodes[$this->protected_tags_counter] = $parentNode instanceof DOMElement
-                    ? HtmlParser::innerHtml($parentNode)
-                    : '';
-                $parentNode->nodeValue = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
+            $placeholder = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
+
+            if ($useElementScope) {
+                // Replace only the matched element's inner content with the
+                // placeholder. The element itself stays in the DOM, so its
+                // siblings continue through normal minification.
+                $this->protectedChildNodes[$this->protected_tags_counter] = HtmlParser::innerHtml($element);
+                $element->nodeValue = $placeholder;
+            } else {
+                $parentNode = $element->parentNode;
+                if ($parentNode->nodeValue !== null) {
+                    $this->protectedChildNodes[$this->protected_tags_counter] = $parentNode instanceof DOMElement
+                        ? HtmlParser::innerHtml($parentNode)
+                        : '';
+                    $parentNode->nodeValue = $placeholder;
+                }
             }
 
             ++$this->protected_tags_counter;
@@ -1627,16 +1638,6 @@ class HtmlMin implements HtmlMinInterface
             . preg_replace(self::ATTR_WHITESPACE_PATTERN, self::ATTR_WHITESPACE_REPLACEMENT, $matches[2])
             . $matches[3]
             . '>';
-    }
-
-    /**
-     * @param string[] $domainsToRemoveHttpPrefixFromAttributes
-     */
-    public function setDomainsToRemoveHttpPrefixFromAttributes(array $domainsToRemoveHttpPrefixFromAttributes): self
-    {
-        $this->domainsToRemoveHttpPrefixFromAttributes = $domainsToRemoveHttpPrefixFromAttributes;
-
-        return $this;
     }
 
     /**

@@ -10,6 +10,7 @@ namespace Akankov\HtmlMinBench\Report;
  *     generated_at:string,
  *     php_version:string,
  *     git_sha:string,
+ *     git_dirty?:bool,
  *     host:string,
  *     adapters:list<AdapterMeta>
  * }
@@ -28,15 +29,153 @@ final class ReportRenderer
      */
     public static function render(array $data): string
     {
+        $parsesOk = self::parsesOkMap($data['compression']);
+
         $out  = "# html-min benchmarks\n\n";
         $out .= self::header($data['header']);
-        $out .= "## Speed (ms/op, lower is better)\n\n";
-        $out .= self::speedTable($data['speed'], $data['header']['adapters']);
+        $out .= "## Summary\n\n";
+        $out .= self::summaryTable($data['speed'], $data['compression'], $data['header']['adapters'], $parsesOk);
+        $out .= "\n## Speed (ms/op, lower is better)\n\n";
+        $out .= self::speedTable($data['speed'], $data['header']['adapters'], $parsesOk);
         $out .= "\n## Peak Memory (MiB, lower is better)\n\n";
-        $out .= self::memoryTable($data['speed'], $data['header']['adapters']);
+        $out .= self::memoryTable($data['speed'], $data['header']['adapters'], $parsesOk);
         $out .= "\n## Compression (gzipped ratio, lower is better)\n\n";
         $out .= self::compressionTable($data['compression'], $data['header']['adapters']);
         return $out . ("\n" . self::methodology($data['header']['adapters']));
+    }
+
+    /**
+     * @param list<SpeedRow> $speed
+     * @param list<CompressionRow> $compression
+     * @param list<AdapterMeta> $adapters
+     * @param array<string, array<string, bool>> $parsesOk
+     */
+    private static function summaryTable(array $speed, array $compression, array $adapters, array $parsesOk): string
+    {
+        $fixtures = self::fixturesOf($speed);
+        $totalFixtures = \count($fixtures);
+
+        /** @var array<string, list<float>> $okSpeedByAdapter */
+        $okSpeedByAdapter = [];
+        foreach ($speed as $r) {
+            if (($parsesOk[$r['adapter']][$r['fixture']] ?? true) === false) {
+                continue;
+            }
+            $okSpeedByAdapter[$r['adapter']][] = $r['ms_per_op'];
+        }
+
+        /** @var array<string, list<float>> $okRatioByAdapter */
+        $okRatioByAdapter = [];
+        /** @var array<string, int> $failuresByAdapter */
+        $failuresByAdapter = [];
+        foreach ($compression as $r) {
+            if ($r['parses_ok']) {
+                $okRatioByAdapter[$r['adapter']][] = $r['ratio_gz'];
+            } else {
+                $failuresByAdapter[$r['adapter']] = ($failuresByAdapter[$r['adapter']] ?? 0) + 1;
+            }
+        }
+
+        $stats = [];
+        foreach ($adapters as $a) {
+            $name = $a['name'];
+            $okSpeed = $okSpeedByAdapter[$name] ?? [];
+            $okRatio = $okRatioByAdapter[$name] ?? [];
+            $stats[$name] = [
+                'median'   => $okSpeed === [] ? null : self::median($okSpeed),
+                'geomean'  => $okSpeed === [] ? null : self::geomean($okSpeed),
+                'failures' => $failuresByAdapter[$name] ?? 0,
+                'avgRatio' => $okRatio === [] ? null : array_sum($okRatio) / \count($okRatio),
+            ];
+        }
+
+        $bestMedian   = self::lowestNonNull(array_column($stats, 'median'));
+        $bestGeomean  = self::lowestNonNull(array_column($stats, 'geomean'));
+        $bestAvgRatio = self::lowestNonNull(array_column($stats, 'avgRatio'));
+
+        $out  = "| adapter | median ms/op | geomean ms/op | parse failures | avg gzipped ratio |\n";
+        $out .= "|---|---|---|---|---|\n";
+        foreach ($adapters as $a) {
+            $name  = $a['name'];
+            $label = $a['unsafe'] ? "{$name} †" : $name;
+            $s     = $stats[$name];
+            $median   = self::formatStat($s['median'], '%.1f', $s['median'] === $bestMedian);
+            $geomean  = self::formatStat($s['geomean'], '%.1f', $s['geomean'] === $bestGeomean);
+            $failures = $s['failures'] . ' / ' . $totalFixtures;
+            $avgRatio = self::formatStat(
+                $s['avgRatio'] === null ? null : $s['avgRatio'] * 100,
+                '%.1f%%',
+                $s['avgRatio'] === $bestAvgRatio,
+            );
+            $out .= "| {$label} | {$median} | {$geomean} | {$failures} | {$avgRatio} |\n";
+        }
+        return $out;
+    }
+
+    /**
+     * @param list<float> $values
+     */
+    private static function median(array $values): float
+    {
+        sort($values);
+        $n = \count($values);
+        if ($n === 0) {
+            return 0.0;
+        }
+        $mid = (int) ($n / 2);
+        return $n % 2 === 1 ? $values[$mid] : ($values[$mid - 1] + $values[$mid]) / 2;
+    }
+
+    /**
+     * @param list<float> $values
+     */
+    private static function geomean(array $values): float
+    {
+        $n = \count($values);
+        if ($n === 0) {
+            return 0.0;
+        }
+        $sumLog = 0.0;
+        foreach ($values as $v) {
+            if ($v <= 0) {
+                return 0.0; // log of non-positive is undefined; bail with 0.
+            }
+            $sumLog += log($v);
+        }
+        return exp($sumLog / $n);
+    }
+
+    /**
+     * @param list<float|null> $values
+     */
+    private static function lowestNonNull(array $values): ?float
+    {
+        $filtered = array_filter($values, static fn (?float $v): bool => $v !== null);
+        return $filtered === [] ? null : min($filtered);
+    }
+
+    private static function formatStat(?float $value, string $fmt, bool $isBest): string
+    {
+        if ($value === null) {
+            return '—';
+        }
+        $cell = \sprintf($fmt, $value);
+        return $isBest ? "**{$cell}**" : $cell;
+    }
+
+    /**
+     * @param list<CompressionRow> $rows
+     *
+     * @return array<string, array<string, bool>>
+     */
+    private static function parsesOkMap(array $rows): array
+    {
+        /** @var array<string, array<string, bool>> $map */
+        $map = [];
+        foreach ($rows as $r) {
+            $map[$r['adapter']][$r['fixture']] = $r['parses_ok'];
+        }
+        return $map;
     }
 
     /**
@@ -44,8 +183,12 @@ final class ReportRenderer
      */
     private static function header(array $h): string
     {
+        $sha = $h['git_sha'];
+        if (($h['git_dirty'] ?? false) === true) {
+            $sha .= ' (dirty: based on uncommitted source)';
+        }
         $lines  = "Generated: {$h['generated_at']}\n";
-        $lines .= "Host: {$h['host']} / PHP {$h['php_version']} / git {$h['git_sha']}\n\n";
+        $lines .= "Host: {$h['host']} / PHP {$h['php_version']} / git {$sha}\n\n";
         $lines .= "**Adapter versions:**\n";
         foreach ($h['adapters'] as $a) {
             $tag = $a['unsafe'] ? ' _(regex-based, unsafe reference)_' : '';
@@ -57,8 +200,9 @@ final class ReportRenderer
     /**
      * @param list<SpeedRow> $rows
      * @param list<AdapterMeta> $adapters
+     * @param array<string, array<string, bool>> $parsesOk
      */
-    private static function speedTable(array $rows, array $adapters): string
+    private static function speedTable(array $rows, array $adapters, array $parsesOk): string
     {
         $fixtures = self::fixturesOf($rows);
 
@@ -77,8 +221,12 @@ final class ReportRenderer
                     $cells[] = '—';
                     continue;
                 }
+                if (($parsesOk[$a['name']][$f] ?? true) === false) {
+                    $cells[] = 'n/a†';
+                    continue;
+                }
                 $cell = \sprintf('%.1f ± %.1f', $row['ms_per_op'], $row['stddev']);
-                if (self::isBestSpeed($grid, $a['name'], $f, $row['ms_per_op'])) {
+                if (self::isBestSpeed($grid, $parsesOk, $a['name'], $f, $row['ms_per_op'])) {
                     $cell = "**$cell**";
                 }
                 $cells[] = $cell;
@@ -91,8 +239,9 @@ final class ReportRenderer
     /**
      * @param list<SpeedRow> $rows
      * @param list<AdapterMeta> $adapters
+     * @param array<string, array<string, bool>> $parsesOk
      */
-    private static function memoryTable(array $rows, array $adapters): string
+    private static function memoryTable(array $rows, array $adapters, array $parsesOk): string
     {
         $fixtures = self::fixturesOf($rows);
 
@@ -111,9 +260,13 @@ final class ReportRenderer
                     $cells[] = '—';
                     continue;
                 }
+                if (($parsesOk[$a['name']][$f] ?? true) === false) {
+                    $cells[] = 'n/a†';
+                    continue;
+                }
 
                 $cell = number_format($row['peak_memory_mb'], 1) . ' MiB';
-                if (self::isBestMemory($grid, $a['name'], $f, $row['peak_memory_mb'])) {
+                if (self::isBestMemory($grid, $parsesOk, $a['name'], $f, $row['peak_memory_mb'])) {
                     $cell = "**$cell**";
                 }
                 $cells[] = $cell;
@@ -197,13 +350,20 @@ final class ReportRenderer
 
     /**
      * @param array<string, array<string, SpeedRow>> $grid
+     * @param array<string, array<string, bool>> $parsesOk
      */
-    private static function isBestSpeed(array $grid, string $adapterName, string $fixture, float $ownValue): bool
+    private static function isBestSpeed(array $grid, array $parsesOk, string $adapterName, string $fixture, float $ownValue): bool
     {
         unset($grid[$adapterName]);
-        foreach ($grid as $byFixture) {
+        foreach ($grid as $otherName => $byFixture) {
             $other = $byFixture[$fixture] ?? null;
-            if ($other !== null && $other['ms_per_op'] < $ownValue) {
+            if ($other === null) {
+                continue;
+            }
+            if (($parsesOk[$otherName][$fixture] ?? true) === false) {
+                continue; // broken outputs don't get to disqualify valid ones
+            }
+            if ($other['ms_per_op'] < $ownValue) {
                 return false;
             }
         }
@@ -212,13 +372,20 @@ final class ReportRenderer
 
     /**
      * @param array<string, array<string, SpeedRow>> $grid
+     * @param array<string, array<string, bool>> $parsesOk
      */
-    private static function isBestMemory(array $grid, string $adapterName, string $fixture, float $ownValue): bool
+    private static function isBestMemory(array $grid, array $parsesOk, string $adapterName, string $fixture, float $ownValue): bool
     {
         unset($grid[$adapterName]);
-        foreach ($grid as $byFixture) {
+        foreach ($grid as $otherName => $byFixture) {
             $other = $byFixture[$fixture] ?? null;
-            if ($other !== null && $other['peak_memory_mb'] < $ownValue) {
+            if ($other === null) {
+                continue;
+            }
+            if (($parsesOk[$otherName][$fixture] ?? true) === false) {
+                continue;
+            }
+            if ($other['peak_memory_mb'] < $ownValue) {
                 return false;
             }
         }
