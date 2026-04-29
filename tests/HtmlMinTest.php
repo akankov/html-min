@@ -923,14 +923,13 @@ foo
              </nocompress>
         </script>');
 
-        // DOMDocument-based parser keeps the leading/trailing whitespace that
-        // voku stripped around the <nocompress> block inside a special-script
-        // tag; the script content is preserved byte-identically.
-        $expected = '<script id=comment-loader type=text/x-handlebars-template>
-            <nocompress>
+        // <nocompress> content is preserved byte-identically; whitespace
+        // inside the special-script but OUTSIDE <nocompress> follows the
+        // standard script-content rules (leading whitespace stripped,
+        // trailing whitespace collapsed to a single space).
+        $expected = '<script id=comment-loader type=text/x-handlebars-template><nocompress>
                 <i class="fas fa-spinner fa-pulse"></i> Loading ...
-             </nocompress>
-        </script>';
+             </nocompress> </script>';
 
         self::assertSame($expected, $html);
     }
@@ -1770,6 +1769,17 @@ h1 {
         $htmlMin->doRemoveHttpsPrefixFromAttributes();
         $htmlMin->doKeepHttpAndHttpsPrefixOnExternalAttributes(false);
         self::assertSame($expected, $htmlMin->minify($html));
+    }
+
+    public function testNocompressDoesNotProtectSiblings(): void
+    {
+        // Whitespace inside a sibling element should still collapse even when
+        // a <nocompress> appears in the same parent — only the <nocompress>
+        // subtree should opt out of minification.
+        $html = '<div><span>foo  bar</span><nocompress>keep  me</nocompress></div>';
+        $expected = '<div><span>foo bar</span><nocompress>keep  me</nocompress></div>';
+
+        self::assertSame($expected, (new HtmlMin())->minify($html));
     }
 
     public function testNullParentNode(): void

@@ -1399,7 +1399,7 @@ class HtmlMin implements HtmlMinInterface
         // Protect <nocompress> HTML tags first.
         // -------------------------------------------------------------------------
 
-        $this->protectTagHelper($dom, 'nocompress');
+        $this->protectTagHelper($dom, 'nocompress', true);
 
         // -------------------------------------------------------------------------
         // Notify the Observer before the minification.
@@ -1470,7 +1470,7 @@ class HtmlMin implements HtmlMinInterface
         }
     }
 
-    private function protectTagHelper(DOMDocument $dom, string $selector): void
+    private function protectTagHelper(DOMDocument $dom, string $selector, bool $useElementScope = false): void
     {
         foreach (HtmlParser::findAll($dom, $selector) as $element) {
             if (!$element instanceof DOMElement) {
@@ -1481,12 +1481,22 @@ class HtmlMin implements HtmlMinInterface
                 continue;
             }
 
-            $parentNode = $element->parentNode;
-            if ($parentNode->nodeValue !== null) {
-                $this->protectedChildNodes[$this->protected_tags_counter] = $parentNode instanceof DOMElement
-                    ? HtmlParser::innerHtml($parentNode)
-                    : '';
-                $parentNode->nodeValue = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
+            $placeholder = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
+
+            if ($useElementScope) {
+                // Replace only the matched element's inner content with the
+                // placeholder. The element itself stays in the DOM, so its
+                // siblings continue through normal minification.
+                $this->protectedChildNodes[$this->protected_tags_counter] = HtmlParser::innerHtml($element);
+                $element->nodeValue = $placeholder;
+            } else {
+                $parentNode = $element->parentNode;
+                if ($parentNode->nodeValue !== null) {
+                    $this->protectedChildNodes[$this->protected_tags_counter] = $parentNode instanceof DOMElement
+                        ? HtmlParser::innerHtml($parentNode)
+                        : '';
+                    $parentNode->nodeValue = $placeholder;
+                }
             }
 
             ++$this->protected_tags_counter;
