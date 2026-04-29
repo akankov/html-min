@@ -1720,6 +1720,18 @@ h1 {
         self::assertSame($expected, $htmlMin->minify($html));
     }
 
+    public function testXhtmlInputPreservesSelfClosingVoidTags(): void
+    {
+        // XHTML doctype must keep <br /> / <img ... /> in self-closing form;
+        // collapsing to HTML5-style <br> would invalidate the document.
+        $html = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><body><p>x<br />y</p></body></html>';
+
+        $minified = (new HtmlMin())->minify($html);
+
+        self::assertStringContainsString('<br />', $minified);
+        self::assertStringContainsString('XHTML 1.0', $minified, 'doctype must be preserved');
+    }
+
     public function testRelativeLinksRejectLookalikeDomains(): void
     {
         // www.example.com.evil.com is a different host — must not be rewritten

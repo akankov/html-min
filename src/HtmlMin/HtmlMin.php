@@ -1239,16 +1239,30 @@ class HtmlMin implements HtmlMinInterface
             $html,
         );
 
-        // self closing tags, don't need a trailing slash ...
+        // Normalize void-element forms emitted by the parser/serializer.
+        // HTML5/HTML4 want bare <br>; XHTML wants the canonical <br />.
+        // (phpstan's flow analysis can't see that minifyHtmlDom() above
+        // writes $this->isXHTML, so it narrows the property to its reset
+        // value of false here — hence the explicit guard suppression.)
         $replace = [];
         $replacement = [];
-        foreach (self::$selfClosingTags as $selfClosingTag) {
-            $replace[] = '<' . $selfClosingTag . '/>';
-            $replacement[] = '<' . $selfClosingTag . '>';
-            $replace[] = '<' . $selfClosingTag . ' />';
-            $replacement[] = '<' . $selfClosingTag . '>';
-            $replace[] = '></' . $selfClosingTag . '>';
-            $replacement[] = '>';
+        /** @phpstan-ignore if.alwaysFalse */
+        if ($this->isXHTML) {
+            foreach (self::$selfClosingTags as $selfClosingTag) {
+                $replace[] = '<' . $selfClosingTag . '/>';
+                $replacement[] = '<' . $selfClosingTag . ' />';
+                $replace[] = '></' . $selfClosingTag . '>';
+                $replacement[] = ' />';
+            }
+        } else {
+            foreach (self::$selfClosingTags as $selfClosingTag) {
+                $replace[] = '<' . $selfClosingTag . '/>';
+                $replacement[] = '<' . $selfClosingTag . '>';
+                $replace[] = '<' . $selfClosingTag . ' />';
+                $replacement[] = '<' . $selfClosingTag . '>';
+                $replace[] = '></' . $selfClosingTag . '>';
+                $replacement[] = '>';
+            }
         }
         $html = str_replace(
             $replace,
