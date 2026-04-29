@@ -92,6 +92,37 @@ final class ReportRendererTest extends TestCase
         self::assertStringContainsString('**4.8 MiB**', $md);
     }
 
+    public function testBrokenAdapterShowsNaInSpeedAndMemoryTables(): void
+    {
+        $data = [
+            'header' => [
+                'generated_at' => '2026-04-23T10:00:00+00:00',
+                'php_version'  => '8.3.0',
+                'git_sha'      => 'abc1234',
+                'host'         => 'Darwin test 25.4',
+                'adapters'     => [
+                    ['name' => 'broken-fast', 'version' => '1', 'unsafe' => false],
+                    ['name' => 'slow-but-correct', 'version' => '1', 'unsafe' => false],
+                ],
+            ],
+            'speed' => [
+                ['adapter' => 'broken-fast',     'fixture' => 'f1', 'ms_per_op' => 0.1, 'stddev' => 0.0, 'peak_memory_mb' => 1.0],
+                ['adapter' => 'slow-but-correct', 'fixture' => 'f1', 'ms_per_op' => 8.5, 'stddev' => 0.1, 'peak_memory_mb' => 5.0],
+            ],
+            'compression' => [
+                ['adapter' => 'broken-fast',      'fixture' => 'f1', 'ratio_raw' => 0.10, 'ratio_gz' => 0.20, 'parses_ok' => false],
+                ['adapter' => 'slow-but-correct', 'fixture' => 'f1', 'ratio_raw' => 0.50, 'ratio_gz' => 0.60, 'parses_ok' => true],
+            ],
+        ];
+        $md = ReportRenderer::render($data);
+        // broken adapter must NOT appear with its 0.1ms timing as fastest
+        self::assertStringNotContainsString('**0.1', $md);
+        self::assertStringNotContainsString('**1.0 MiB**', $md);
+        // slow-but-correct must be the only "best" cell — bolded
+        self::assertMatchesRegularExpression('/\*\*8\.5\s*±/', $md);
+        self::assertStringContainsString('**5.0 MiB**', $md);
+    }
+
     public function testParseFailureIsNotMarkedBest(): void
     {
         $data = [
