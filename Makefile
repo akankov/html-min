@@ -68,11 +68,13 @@ md-check: ## Check tracked Markdown formatting
 bench-install: ## Install composer dependencies for benchmarks
 	$(BENCH_COMPOSER) install --no-interaction --no-progress
 
-bench: ## Run full benchmark suite and write latest.md
+bench: ## Run full benchmark suite, write latest.md, sync Summary block into README
 	mkdir -p benchmarks/build
 	$(BENCH_PHP) vendor/bin/phpbench run src/Bench/MinifyBench.php --dump-file=build/bench.xml
 	$(BENCH_PHP) bin/compression-report.php > benchmarks/build/compression.json
 	$(BENCH_PHP) bin/render-report.php build/bench.xml build/compression.json ../latest.md
+	$(BENCH_PHP) bin/inject-readme-bench.php ../latest.md ../README.md
+	$(MARKDOWN_FMT) --write README.md
 
 bench-quick: ## Faster bench for local loops (fewer iterations); writes to benchmarks/build/quick-report.md, never latest.md
 	mkdir -p benchmarks/build
