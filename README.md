@@ -126,7 +126,7 @@ and abordage/html-min on a corpus of real-world HTML pages.
 <!-- BENCH-START -->
 
 | adapter                   | median ms/op | geomean ms/op | parse failures | avg gzipped ratio |
-|---------------------------|--------------|---------------|----------------|-------------------|
+| ------------------------- | ------------ | ------------- | -------------- | ----------------- |
 | akankov/html-min          | 2.1          | 1.9           | 0 / 11         | 90.9%             |
 | voku/html-min             | 3.0          | 3.2           | 0 / 11         | 90.9%             |
 | wyrihaximus/html-compress | 5.4          | 7.1           | 0 / 11         | **86.8%**         |
