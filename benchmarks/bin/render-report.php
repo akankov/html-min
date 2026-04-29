@@ -83,6 +83,7 @@ $header = [
     'generated_at' => $generatedAt,
     'php_version'  => $phpVersion,
     'git_sha'      => getenv('BENCH_GIT_SHA') ?: 'unknown',
+    'git_dirty'    => getenv('BENCH_GIT_DIRTY') === 'dirty',
     'host'         => php_uname('s') . ' ' . php_uname('r'),
     'adapters'     => array_map(
         static fn (\Akankov\HtmlMinBench\Adapters\MinifierAdapter $a): array => ['name' => $a->name(), 'version' => $a->version(), 'unsafe' => $a->isUnsafeReference()],

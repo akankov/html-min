@@ -52,6 +52,15 @@ final class ReportRendererTest extends TestCase
         self::assertStringContainsString('Generated: 2026-04-23T10:00:00+00:00', $md);
         self::assertStringContainsString('PHP 8.3.0', $md);
         self::assertStringContainsString('abc1234', $md);
+        self::assertStringNotContainsString('dirty', $md);
+    }
+
+    public function testDirtyWorkingTreeIsLabelledOnSha(): void
+    {
+        $data = $this->fixtureInput();
+        $data['header']['git_dirty'] = true;
+        $md = ReportRenderer::render($data);
+        self::assertStringContainsString('abc1234 (dirty: based on uncommitted source)', $md);
     }
 
     public function testRenderIncludesSpeedAndCompressionTables(): void

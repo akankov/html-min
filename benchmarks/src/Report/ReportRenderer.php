@@ -10,6 +10,7 @@ namespace Akankov\HtmlMinBench\Report;
  *     generated_at:string,
  *     php_version:string,
  *     git_sha:string,
+ *     git_dirty?:bool,
  *     host:string,
  *     adapters:list<AdapterMeta>
  * }
@@ -44,8 +45,12 @@ final class ReportRenderer
      */
     private static function header(array $h): string
     {
+        $sha = $h['git_sha'];
+        if (($h['git_dirty'] ?? false) === true) {
+            $sha .= ' (dirty: based on uncommitted source)';
+        }
         $lines  = "Generated: {$h['generated_at']}\n";
-        $lines .= "Host: {$h['host']} / PHP {$h['php_version']} / git {$h['git_sha']}\n\n";
+        $lines .= "Host: {$h['host']} / PHP {$h['php_version']} / git {$sha}\n\n";
         $lines .= "**Adapter versions:**\n";
         foreach ($h['adapters'] as $a) {
             $tag = $a['unsafe'] ? ' _(regex-based, unsafe reference)_' : '';

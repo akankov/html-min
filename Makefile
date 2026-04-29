@@ -10,7 +10,9 @@ COMPOSER    := $(DOCKER_RUN) composer:2 composer
 
 .PHONY: help install update outdated test test-all phpstan phan phan-image cs cs-check rector rector-check md md-check bench-install bench bench-quick bench-baseline bench-cs bench-cs-check bench-rector bench-rector-check bench-phpstan bench-test bench-quality quality ci clean
 
-BENCH_PHP      := docker run --rm -v "$(CURDIR)":/app -w /app/benchmarks -e BENCH_GIT_SHA=$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown) $(PHP_IMAGE) php
+BENCH_GIT_SHA   := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+BENCH_GIT_DIRTY := $(shell git diff-index --quiet HEAD -- 2>/dev/null && echo clean || echo dirty)
+BENCH_PHP       := docker run --rm -v "$(CURDIR)":/app -w /app/benchmarks -e BENCH_GIT_SHA=$(BENCH_GIT_SHA) -e BENCH_GIT_DIRTY=$(BENCH_GIT_DIRTY) $(PHP_IMAGE) php
 BENCH_COMPOSER := docker run --rm -v "$(CURDIR)":/app -w /app/benchmarks composer:2 composer
 MARKDOWN_FILES := $(shell git ls-files -- '*.md' ':!:latest.md')
 MARKDOWN_FMT   := bin/markdown-format
@@ -72,11 +74,11 @@ bench: ## Run full benchmark suite and write latest.md
 	$(BENCH_PHP) bin/compression-report.php > benchmarks/build/compression.json
 	$(BENCH_PHP) bin/render-report.php build/bench.xml build/compression.json ../latest.md
 
-bench-quick: ## Faster bench for local loops (fewer iterations)
+bench-quick: ## Faster bench for local loops (fewer iterations); writes to benchmarks/build/quick-report.md, never latest.md
 	mkdir -p benchmarks/build
 	$(BENCH_PHP) vendor/bin/phpbench run src/Bench/MinifyBench.php --iterations=2 --revs=3 --warmup=1 --dump-file=build/bench.xml
 	$(BENCH_PHP) bin/compression-report.php > benchmarks/build/compression.json
-	$(BENCH_PHP) bin/render-report.php build/bench.xml build/compression.json ../latest.md
+	$(BENCH_PHP) bin/render-report.php build/bench.xml build/compression.json build/quick-report.md
 
 bench-baseline: ## Copy latest.md to baseline.md for release-diff purposes
 	cp latest.md baseline.md
