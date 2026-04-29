@@ -66,11 +66,47 @@ final class ReportRendererTest extends TestCase
     public function testRenderIncludesSpeedAndCompressionTables(): void
     {
         $md = ReportRenderer::render($this->fixtureInput());
+        self::assertStringContainsString('## Summary', $md);
         self::assertStringContainsString('## Speed', $md);
         self::assertStringContainsString('## Peak Memory', $md);
         self::assertStringContainsString('## Compression', $md);
         self::assertStringContainsString('akankov/html-min', $md);
         self::assertStringContainsString('abordage/html-min', $md);
+    }
+
+    public function testSummaryTableReportsMedianGeomeanFailuresAndAvgRatio(): void
+    {
+        $data = [
+            'header' => [
+                'generated_at' => '2026-04-23T10:00:00+00:00',
+                'php_version'  => '8.3.0',
+                'git_sha'      => 'abc1234',
+                'host'         => 'Darwin test 25.4',
+                'adapters'     => [
+                    ['name' => 'fast', 'version' => '1', 'unsafe' => false],
+                    ['name' => 'slow-with-failure', 'version' => '1', 'unsafe' => false],
+                ],
+            ],
+            'speed' => [
+                ['adapter' => 'fast',              'fixture' => 'a', 'ms_per_op' => 4.0,  'stddev' => 0.0, 'peak_memory_mb' => 1.0],
+                ['adapter' => 'fast',              'fixture' => 'b', 'ms_per_op' => 16.0, 'stddev' => 0.0, 'peak_memory_mb' => 1.0],
+                ['adapter' => 'slow-with-failure', 'fixture' => 'a', 'ms_per_op' => 20.0, 'stddev' => 0.0, 'peak_memory_mb' => 1.0],
+                ['adapter' => 'slow-with-failure', 'fixture' => 'b', 'ms_per_op' => 25.0, 'stddev' => 0.0, 'peak_memory_mb' => 1.0],
+            ],
+            'compression' => [
+                ['adapter' => 'fast',              'fixture' => 'a', 'ratio_raw' => 0.80, 'ratio_gz' => 0.85, 'parses_ok' => true],
+                ['adapter' => 'fast',              'fixture' => 'b', 'ratio_raw' => 0.80, 'ratio_gz' => 0.85, 'parses_ok' => true],
+                ['adapter' => 'slow-with-failure', 'fixture' => 'a', 'ratio_raw' => 0.80, 'ratio_gz' => 0.95, 'parses_ok' => true],
+                ['adapter' => 'slow-with-failure', 'fixture' => 'b', 'ratio_raw' => 0.10, 'ratio_gz' => 0.20, 'parses_ok' => false],
+            ],
+        ];
+        $md = ReportRenderer::render($data);
+
+        self::assertStringContainsString('## Summary', $md);
+        // fast: median(4, 16) = 10.0; geomean = sqrt(64) = 8.0; 0/2 failures; avg ratio 85.0%
+        self::assertStringContainsString('| fast | **10.0** | **8.0** | 0 / 2 | **85.0%** |', $md);
+        // slow-with-failure: median of (20.0) only = 20.0; geomean = 20.0; 1/2 failures; avg ratio 95.0%
+        self::assertStringContainsString('| slow-with-failure | 20.0 | 20.0 | 1 / 2 | 95.0% |', $md);
     }
 
     public function testUnsafeAdapterIsLabelled(): void
