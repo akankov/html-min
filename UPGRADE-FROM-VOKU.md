@@ -37,10 +37,10 @@ and modernizes the type surface.
 
 ## Minimum PHP version
 
-**`^8.3`** through `^8.5`. Upstream's `voku/html-min` accepted PHP 7.4; this
-fork drops 7.x, 8.0, 8.1, and 8.2. PHP 7.4–8.1 are past end-of-life; 8.2 is
-dropped to align the dev toolchain with PHPUnit 12 (which requires PHP 8.3+).
-If you need 7.x/8.2 runtime support, pin `voku/html-min:^4.5`.
+**`8.3.* || 8.4.* || 8.5.*`**. Upstream's `voku/html-min` accepted PHP 7.4;
+this fork drops 7.x, 8.0, 8.1, and 8.2. PHP 7.4–8.1 are past end-of-life;
+8.2 is dropped to align the dev toolchain with PHPUnit 12 (which requires
+PHP 8.3+). If you need 7.x/8.2 runtime support, pin `voku/html-min:^4.5`.
 
 ## DOM API (v1)
 
