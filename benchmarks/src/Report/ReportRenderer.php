@@ -150,7 +150,7 @@ final class ReportRenderer
      */
     private static function lowestNonNull(array $values): ?float
     {
-        $filtered = array_filter($values, static fn ($v): bool => $v !== null);
+        $filtered = array_filter($values, static fn (?float $v): bool => $v !== null);
         return $filtered === [] ? null : min($filtered);
     }
 
