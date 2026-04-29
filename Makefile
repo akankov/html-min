@@ -8,7 +8,7 @@ PHP         := $(DOCKER_RUN) $(PHP_IMAGE) php
 PHP_PHAN    := $(DOCKER_RUN) $(PHAN_IMAGE) php
 COMPOSER    := $(DOCKER_RUN) composer:2 composer
 
-.PHONY: help install update outdated test test-all phpstan phan phan-image cs cs-check rector rector-check md md-check bench-install bench bench-quick bench-baseline bench-cs bench-cs-check bench-rector bench-rector-check bench-phpstan bench-quality quality ci clean
+.PHONY: help install update outdated test test-all phpstan phan phan-image cs cs-check rector rector-check md md-check bench-install bench bench-quick bench-baseline bench-cs bench-cs-check bench-rector bench-rector-check bench-phpstan bench-test bench-quality quality ci clean
 
 BENCH_PHP      := docker run --rm -v "$(CURDIR)":/app -w /app/benchmarks -e BENCH_GIT_SHA=$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown) $(PHP_IMAGE) php
 BENCH_COMPOSER := docker run --rm -v "$(CURDIR)":/app -w /app/benchmarks composer:2 composer
@@ -96,11 +96,14 @@ bench-rector-check: ## Preview rector refactors for benchmarks
 bench-phpstan: ## Run phpstan on benchmarks
 	$(BENCH_PHP) vendor/bin/phpstan analyse --no-progress --memory-limit=512M
 
+bench-test: ## Run phpunit on benchmarks
+	$(BENCH_PHP) vendor/bin/phpunit
+
 bench-quality: bench-rector bench-cs bench-phpstan ## Run all quality tools on benchmarks
 
 quality: rector cs phpstan phan bench-quality md-check ## Run all quality tools (library + benchmarks)
 
-ci: md-check cs-check phpstan phan bench-phpstan test-all ## Run the full CI pipeline locally
+ci: md-check cs-check phpstan phan rector-check bench-phpstan bench-rector-check bench-test test-all ## Run the full CI pipeline locally
 
 clean: ## Remove vendor and cache directories
 	rm -rf vendor .phpstan.cache .phpunit.cache .php-cs-fixer.cache .phan/cache

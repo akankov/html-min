@@ -61,11 +61,18 @@ jobs:
           extensions: dom, libxml, mbstring
           tools: composer:v2
 
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-8.4-${{ hashFiles('composer.json') }}
+          restore-keys: composer-8.4-
+
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
 
       - name: Run PHPStan
-        run: vendor/bin/phpstan analyse --no-progress
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=512M
 
   phan:
     name: Phan
@@ -82,11 +89,46 @@ jobs:
           extensions: dom, libxml, mbstring, ast
           tools: composer:v2
 
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-phan-${{ hashFiles('composer.json') }}
+          restore-keys: composer-phan-
+
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
 
       - name: Run Phan
         run: vendor/bin/phan --no-progress-bar
+
+  rector-check:
+    name: Rector dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          coverage: none
+          extensions: dom, libxml, mbstring
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-8.4-${{ hashFiles('composer.json') }}
+          restore-keys: composer-8.4-
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Run Rector (dry-run)
+        run: vendor/bin/rector process --dry-run
 
   code-style:
     name: PHP-CS-Fixer
@@ -102,6 +144,13 @@ jobs:
           coverage: none
           extensions: dom, libxml, mbstring
           tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-8.4-${{ hashFiles('composer.json') }}
+          restore-keys: composer-8.4-
 
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
@@ -177,4 +226,34 @@ jobs:
 
       - name: Run PHPStan
         working-directory: benchmarks
-        run: vendor/bin/phpstan analyse --no-progress
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=512M
+
+  benchmarks-rector-check:
+    name: Benchmarks Rector dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          coverage: none
+          extensions: dom, libxml, mbstring
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-benchmarks-${{ hashFiles('benchmarks/composer.json') }}
+          restore-keys: composer-benchmarks-
+
+      - name: Install benchmarks dependencies
+        working-directory: benchmarks
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Run Rector (dry-run)
+        working-directory: benchmarks
+        run: vendor/bin/rector process --dry-run
