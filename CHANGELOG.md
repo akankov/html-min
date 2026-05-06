@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-05-06
+
+Configuration ergonomics, observer lifecycle, PSR-3 diagnostics — plus the
+deprecation cycle for the unused `minify()` parameter closes here as
+scheduled. Released from PR
+[#11](https://github.com/akankov/html-min/pull/11).
+
 ### Added
 
 - `Akankov\HtmlMin\Config\MinifierOptions` — readonly value object with
