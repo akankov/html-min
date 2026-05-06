@@ -6,6 +6,7 @@ namespace Akankov\HtmlMin;
 
 use Akankov\HtmlMin\Contract\DomObserver;
 use Akankov\HtmlMin\Contract\HtmlMinInterface;
+use Akankov\HtmlMin\Internal\DoctypeKind;
 use Akankov\HtmlMin\Internal\HtmlParser;
 use Akankov\HtmlMin\Observer\OptimizeAttributes;
 use DOMAttr;
@@ -40,6 +41,37 @@ class HtmlMin implements HtmlMinInterface
         'head',
         'body',
     ];
+
+    /**
+     * Tags whose end-tag may be omitted only conditionally (depending on the
+     * next sibling and/or parent). Used as a fast-path: any tag not in
+     * $optional_end_tags and not here can never have its end tag omitted, so
+     * we can short-circuit before paying the next-sibling traversal.
+     *
+     * @var string[]
+     */
+    private static array $conditional_end_tags = [
+        'li',
+        'optgroup',
+        'rp',
+        'tr',
+        'source',
+        'td',
+        'th',
+        'dd',
+        'dt',
+        'option',
+        'p',
+    ];
+
+    /**
+     * Memoised results of domNodeClosingTagOptional() keyed by
+     * "$tag|$parent|$next-sibling-marker". The boolean result is a pure
+     * function of those names, so the cache survives across minify() calls.
+     *
+     * @var array<string, bool>
+     */
+    private array $closingTagCache = [];
 
     /**
      * @var string[]
@@ -539,6 +571,14 @@ class HtmlMin implements HtmlMinInterface
     {
         $tag_name = $node->nodeName;
 
+        if (\in_array($tag_name, self::$optional_end_tags, true)) {
+            return true;
+        }
+
+        if (!\in_array($tag_name, self::$conditional_end_tags, true)) {
+            return false;
+        }
+
         /** @var DOMNode|null $parent_node - false-positive error from phpstan */
         $parent_node = $node->parentNode;
 
@@ -549,6 +589,16 @@ class HtmlMin implements HtmlMinInterface
         }
 
         $nextSibling = $this->getNextSiblingOfTypeDOMElement($node);
+
+        $next_marker = match (true) {
+            $nextSibling === null              => '_NULL_',
+            $nextSibling instanceof DOMElement => 'E:' . $nextSibling->tagName,
+            default                            => '_OTHER_',
+        };
+        $cache_key = $tag_name . '|' . ($parent_tag_name ?? '_NONE_') . '|' . $next_marker;
+        if (isset($this->closingTagCache[$cache_key])) {
+            return $this->closingTagCache[$cache_key];
+        }
 
         // https://html.spec.whatwg.org/multipage/syntax.html#syntax-tag-omission
 
@@ -586,10 +636,8 @@ class HtmlMin implements HtmlMinInterface
         //
         // <-- However, a start tag must never be omitted if it has any attributes.
 
-        return \in_array($tag_name, self::$optional_end_tags, true)
-               ||
-               (
-                   $tag_name === 'li'
+        $result = (
+            $tag_name === 'li'
                    &&
                    (
                        $nextSibling === null
@@ -600,7 +648,7 @@ class HtmlMin implements HtmlMinInterface
                            $nextSibling->tagName === 'li'
                        )
                    )
-               )
+        )
                ||
                (
                    $tag_name === 'optgroup'
@@ -797,6 +845,10 @@ class HtmlMin implements HtmlMinInterface
                        )
                    )
                );
+
+        $this->closingTagCache[$cache_key] = $result;
+
+        return $result;
     }
 
     protected function domNodeToString(DOMNode $node): string
@@ -1127,6 +1179,10 @@ class HtmlMin implements HtmlMinInterface
     }
 
     /**
+     * @param bool $multiDecodeNewHtmlEntity @deprecated since 2.1.0; the flag has been
+     *                                       ignored since the libxml-based parser landed
+     *                                       and will be removed in 2.2.0.
+     *
      * @phan-suppress PhanUnusedPublicMethodParameter
      */
     #[Override]
@@ -1156,8 +1212,9 @@ class HtmlMin implements HtmlMinInterface
         // Minify the HTML via DOM parser
         // -------------------------------------------------------------------------
 
+        $detectedDoctype = null;
         if ($this->doOptimizeViaHtmlDomParser) {
-            $html = $this->minifyHtmlDom($html);
+            ['html' => $html, 'doctype' => $detectedDoctype] = $this->minifyHtmlDom($html);
         }
 
         // -------------------------------------------------------------------------
@@ -1241,13 +1298,9 @@ class HtmlMin implements HtmlMinInterface
 
         // Normalize void-element forms emitted by the parser/serializer.
         // HTML5/HTML4 want bare <br>; XHTML wants the canonical <br />.
-        // (phpstan's flow analysis can't see that minifyHtmlDom() above
-        // writes $this->isXHTML, so it narrows the property to its reset
-        // value of false here — hence the explicit guard suppression.)
         $replace = [];
         $replacement = [];
-        /** @phpstan-ignore if.alwaysFalse */
-        if ($this->isXHTML) {
+        if ($detectedDoctype === DoctypeKind::Xhtml1) {
             foreach (self::$selfClosingTags as $selfClosingTag) {
                 $replace[] = '<' . $selfClosingTag . '/>';
                 $replacement[] = '<' . $selfClosingTag . ' />';
@@ -1360,7 +1413,10 @@ class HtmlMin implements HtmlMinInterface
         return false;
     }
 
-    private function minifyHtmlDom(string $html): string
+    /**
+     * @return array{html: string, doctype: ?DoctypeKind}
+     */
+    private function minifyHtmlDom(string $html): array
     {
         // Remove content before <!DOCTYPE.*> because otherwise the DOMDocument can not handle the input.
         if (stripos($html, '<!DOCTYPE') !== false) {
@@ -1389,11 +1445,9 @@ class HtmlMin implements HtmlMinInterface
         $dom->formatOutput = false; // do not formats output with indentation
 
         $doctypeStr = $this->getDoctype($dom);
-
-        if ($doctypeStr) {
-            $this->isHTML4 = str_contains($doctypeStr, 'html4');
-            $this->isXHTML = str_contains($doctypeStr, 'xhtml1');
-        }
+        $detectedDoctype = DoctypeKind::fromDoctypeString($doctypeStr);
+        $this->isHTML4 = $detectedDoctype === DoctypeKind::Html4;
+        $this->isXHTML = $detectedDoctype === DoctypeKind::Xhtml1;
 
         // -------------------------------------------------------------------------
         // Protect <nocompress> HTML tags first.
@@ -1453,7 +1507,10 @@ class HtmlMin implements HtmlMinInterface
         // Convert the Dom into a string.
         // -------------------------------------------------------------------------
 
-        return $doctypeStr . $this->domNodeToString($dom);
+        return [
+            'html'    => $doctypeStr . $this->domNodeToString($dom),
+            'doctype' => $detectedDoctype,
+        ];
     }
 
     private function notifyObserversAboutDomElementAfterMinification(DOMElement $domElement): void
@@ -1657,12 +1714,26 @@ class HtmlMin implements HtmlMinInterface
      */
     private function sumUpWhitespace(DOMDocument $dom): void
     {
+        // Walking the parent chain per text node re-traverses the same ancestors
+        // thousands of times on large docs. Instead, pre-compute the set of text
+        // nodes that live inside any whitespace-protected ancestor and check via
+        // O(1) lookup during the main pass.
+        /** @var SplObjectStorage<DOMText, null> $protected */
+        $protected = new SplObjectStorage();
+        $skipSelector = implode(', ', array_keys(self::$skipTagsForRemoveWhitespace));
+        foreach (HtmlParser::findAll($dom, $skipSelector) as $protectedAncestor) {
+            if (!$protectedAncestor instanceof DOMElement) {
+                continue;
+            }
+            self::collectDescendantTextNodes($protectedAncestor, $protected);
+        }
+
         foreach (HtmlParser::findAll($dom, '//text()') as $text_node) {
             if (!$text_node instanceof DOMText) {
                 continue;
             }
 
-            if (self::isInsideWhitespaceProtectedTag($text_node)) {
+            if ($protected->offsetExists($text_node)) {
                 continue;
             }
 
@@ -1673,19 +1744,18 @@ class HtmlMin implements HtmlMinInterface
         }
     }
 
-    private static function isInsideWhitespaceProtectedTag(DOMText $textNode): bool
+    /**
+     * @param SplObjectStorage<DOMText, null> $store
+     */
+    private static function collectDescendantTextNodes(DOMNode $node, SplObjectStorage $store): void
     {
-        $parentNode = $textNode->parentNode;
-
-        while ($parentNode !== null) {
-            if ($parentNode instanceof DOMElement && isset(self::$skipTagsForRemoveWhitespace[$parentNode->tagName])) {
-                return true;
+        foreach ($node->childNodes as $child) {
+            if ($child instanceof DOMText) {
+                $store[$child] = null;
+            } elseif ($child->hasChildNodes()) {
+                self::collectDescendantTextNodes($child, $store);
             }
-
-            $parentNode = $parentNode->parentNode;
         }
-
-        return false;
     }
 
     /**

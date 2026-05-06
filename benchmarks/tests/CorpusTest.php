@@ -33,9 +33,25 @@ final class CorpusTest extends TestCase
         }
     }
 
-    public function testAllReturnsUnionOfBothTiers(): void
+    public function testSyntheticTierHasThreeStressFixtures(): void
     {
-        self::assertCount(11, Corpus::all());
+        self::assertCount(3, Corpus::synthetic());
+        self::assertSame(
+            ['repeated-fragments', 'deep-nesting', 'attribute-heavy'],
+            array_keys(Corpus::synthetic()),
+        );
+    }
+
+    public function testSyntheticFixturesAreNonEmpty(): void
+    {
+        foreach (Corpus::synthetic() as $name => $html) {
+            self::assertNotSame('', $html, "synthetic fixture $name is empty");
+        }
+    }
+
+    public function testAllReturnsUnionOfAllTiers(): void
+    {
+        self::assertCount(14, Corpus::all());
     }
 
     public function testFixtureNamesAreStableIdentifiers(): void

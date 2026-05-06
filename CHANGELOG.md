@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Akankov\HtmlMin\Internal\DoctypeKind` enum encoding the three document
+  flavours (`Html5`, `Html4`, `Xhtml1`) plus a `null` "no doctype" reading.
+  Replaces an inline pair of `str_contains` checks. Fully unit-tested in
+  `tests/Internal/DoctypeKindTest.php`.
+- Three synthetic bench fixtures — `repeated-fragments` (1000 small
+  templates), `deep-nesting` (1k-level `<div>` tree), `attribute-heavy`
+  (500 nodes × 20 data-attrs). Generated on demand via
+  `Corpus::synthetic()`; included in `Corpus::all()` so PhpBench picks
+  them up automatically.
+
+### Changed
+
+- `HtmlMin::domNodeClosingTagOptional()` now short-circuits before walking
+  the next-sibling chain for tags that can never have an optional closing
+  tag (the common case — `div`, `span`, `a`, etc.), and memoises the
+  result for the conditional set (`p`, `li`, `tr`, `td`, …) keyed by
+  `(tag, parent, next-sibling-marker)`. The boolean is a pure function of
+  those names so the cache survives across `minify()` calls.
+- `HtmlMin::sumUpWhitespace()` pre-computes the set of text nodes inside
+  whitespace-protected ancestors (`code`, `pre`, `script`, `style`,
+  `textarea`) once per call, rather than walking the parent chain per
+  text node. O(1) lookup replaces O(depth) per node.
+- `Internal\HtmlParser::replaceToPreserveHtmlEntities()` collapses the
+  AMP marker pass and the global entity-character pass into a single
+  `strtr()` map, cutting one full-document scan out of every parse.
+- `HtmlMin::minifyHtmlDom()` now returns
+  `array{html: string, doctype: ?DoctypeKind}` instead of a bare string.
+  This eliminates the `@phpstan-ignore if.alwaysFalse` that was masking
+  PHPStan's inability to track property writes across the call boundary
+  for the XHTML void-tag normalisation step.
+- PHP 8.5 compatibility: replaced `SplObjectStorage::contains()` /
+  `attach()` with `offsetExists()` / `offsetSet()` (both deprecated in
+  8.5).
+
+### Deprecated
+
+- The second parameter on `HtmlMin::minify()` (declared as
+  `$decodeUtf8Specials` on `HtmlMinInterface`, `$multiDecodeNewHtmlEntity`
+  on the concrete class) has been ignored since the libxml-based parser
+  replaced `voku/simple_html_dom`. It is now marked `@deprecated` and
+  will be removed in 2.2.0. Callers passing `true` should drop the
+  argument; output is unchanged either way.
+
 ## [2.0.0] — 2026-04-29
 
 Outcome of an audit of the library against its documented contract.
