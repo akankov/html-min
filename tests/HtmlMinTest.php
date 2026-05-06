@@ -253,7 +253,7 @@ final class HtmlMinTest extends TestCase
             (string) file_get_contents(__DIR__ . '/fixtures/hlt_result.html'),
         );
 
-        self::assertSame(trim($expected), $htmlMin->minify($html, true));
+        self::assertSame(trim($expected), $htmlMin->minify($html));
     }
 
     public function testOptionsDomFalse(): void
@@ -704,7 +704,7 @@ h1 {
     #[DataProvider('provideSpecialCharacterEncodingCases')]
     public function testSpecialCharacterEncoding(string $input, string $expected): void
     {
-        $actual = (new HtmlMin())->minify($input, true);
+        $actual = (new HtmlMin())->minify($input);
         self::assertSame($expected, $actual);
     }
 

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Akankov\HtmlMin;
 
+use Akankov\HtmlMin\Config\MinifierOptions;
 use Akankov\HtmlMin\Contract\DomObserver;
 use Akankov\HtmlMin\Contract\HtmlMinInterface;
+use Akankov\HtmlMin\Contract\ObserverPhase;
 use Akankov\HtmlMin\Internal\DoctypeKind;
 use Akankov\HtmlMin\Internal\HtmlParser;
 use Akankov\HtmlMin\Observer\OptimizeAttributes;
@@ -18,6 +20,7 @@ use DOMNode;
 use DOMText;
 use InvalidArgumentException;
 use Override;
+use Psr\Log\LoggerInterface;
 use SplObjectStorage;
 
 use const XML_TEXT_NODE;
@@ -266,21 +269,78 @@ class HtmlMin implements HtmlMinInterface
      */
     private ?array $specialScriptTags = null;
 
-    public function __construct()
+    private ?LoggerInterface $logger = null;
+
+    /**
+     * Receive PSR-3 records for HTML parse warnings that libxml would
+     * otherwise swallow. Without an injected logger the previous silent-
+     * recovery behaviour is preserved.
+     */
+    public function setLogger(LoggerInterface $logger): self
+    {
+        $this->logger = $logger;
+
+        return $this;
+    }
+
+    public function __construct(?MinifierOptions $options = null)
     {
         $this->domLoopBeforeObservers = new SplObjectStorage();
         $this->domLoopAfterObservers = new SplObjectStorage();
 
-        $this->attachObserverToTheDomLoop(new OptimizeAttributes());
+        $this->attachObserverToTheDomLoop(new OptimizeAttributes(), ObserverPhase::After);
+
+        if ($options !== null) {
+            $this->applyOptions($options);
+        }
     }
 
-    public function attachObserverToTheDomLoop(DomObserver $observer): void
+    /**
+     * Copy a MinifierOptions snapshot onto the per-instance flags. Property
+     * names map 1:1 minus the historical `do` prefix on the setters.
+     */
+    private function applyOptions(MinifierOptions $options): void
     {
-        if (!$observer instanceof OptimizeAttributes) {
+        $this->doOptimizeViaHtmlDomParser = $options->optimizeViaHtmlDomParser;
+        $this->doOptimizeAttributes = $options->optimizeAttributes;
+        $this->doRemoveComments = $options->removeComments;
+        $this->doRemoveWhitespaceAroundTags = $options->removeWhitespaceAroundTags;
+        $this->doRemoveOmittedQuotes = $options->removeOmittedQuotes;
+        $this->doRemoveOmittedHtmlTags = $options->removeOmittedHtmlTags;
+        $this->doRemoveHttpPrefixFromAttributes = $options->removeHttpPrefixFromAttributes;
+        $this->doRemoveHttpsPrefixFromAttributes = $options->removeHttpsPrefixFromAttributes;
+        $this->doKeepHttpAndHttpsPrefixOnExternalAttributes = $options->keepHttpAndHttpsPrefixOnExternalAttributes;
+        $this->doSortCssClassNames = $options->sortCssClassNames;
+        $this->doSortHtmlAttributes = $options->sortHtmlAttributes;
+        $this->doRemoveDeprecatedScriptCharsetAttribute = $options->removeDeprecatedScriptCharsetAttribute;
+        $this->doRemoveDefaultAttributes = $options->removeDefaultAttributes;
+        $this->doRemoveDeprecatedAnchorName = $options->removeDeprecatedAnchorName;
+        $this->doRemoveDeprecatedTypeFromStylesheetLink = $options->removeDeprecatedTypeFromStylesheetLink;
+        $this->doRemoveDeprecatedTypeFromStyleAndLinkTag = $options->removeDeprecatedTypeFromStyleAndLinkTag;
+        $this->doRemoveDefaultMediaTypeFromStyleAndLinkTag = $options->removeDefaultMediaTypeFromStyleAndLinkTag;
+        $this->doRemoveDefaultTypeFromButton = $options->removeDefaultTypeFromButton;
+        $this->doRemoveDeprecatedTypeFromScriptTag = $options->removeDeprecatedTypeFromScriptTag;
+        $this->doRemoveValueFromEmptyInput = $options->removeValueFromEmptyInput;
+        $this->doRemoveEmptyAttributes = $options->removeEmptyAttributes;
+        $this->doSumUpWhitespace = $options->sumUpWhitespace;
+        $this->doRemoveSpacesBetweenTags = $options->removeSpacesBetweenTags;
+        $this->keepBrokenHtml = $options->keepBrokenHtml;
+        $this->localDomains = $options->localDomains;
+        $this->specialHtmlCommentsStaringWith = $options->specialHtmlCommentsStartingWith;
+        $this->specialHtmlCommentsEndingWith = $options->specialHtmlCommentsEndingWith;
+        $this->specialScriptTags = $options->specialScriptTags;
+        $this->templateLogicSyntaxInSpecialScriptTags = $options->templateLogicSyntaxInSpecialScriptTags;
+    }
+
+    public function attachObserverToTheDomLoop(DomObserver $observer, ObserverPhase $phase = ObserverPhase::Both): void
+    {
+        if ($phase === ObserverPhase::Before || $phase === ObserverPhase::Both) {
             $this->domLoopBeforeObservers[$observer] = $observer;
         }
 
-        $this->domLoopAfterObservers[$observer] = $observer;
+        if ($phase === ObserverPhase::After || $phase === ObserverPhase::Both) {
+            $this->domLoopAfterObservers[$observer] = $observer;
+        }
     }
 
 
@@ -1178,15 +1238,8 @@ class HtmlMin implements HtmlMinInterface
         return $this->isXHTML;
     }
 
-    /**
-     * @param bool $multiDecodeNewHtmlEntity @deprecated since 2.1.0; the flag has been
-     *                                       ignored since the libxml-based parser landed
-     *                                       and will be removed in 2.2.0.
-     *
-     * @phan-suppress PhanUnusedPublicMethodParameter
-     */
     #[Override]
-    public function minify(string $html, bool $multiDecodeNewHtmlEntity = false): string
+    public function minify(string $html): string
     {
         if (!isset($html[0])) {
             return '';
@@ -1440,6 +1493,7 @@ class HtmlMin implements HtmlMinInterface
             $this->keepBrokenHtml,
             $this->specialScriptTags,
             $this->templateLogicSyntaxInSpecialScriptTags,
+            $this->logger,
         );
 
         $dom->formatOutput = false; // do not formats output with indentation

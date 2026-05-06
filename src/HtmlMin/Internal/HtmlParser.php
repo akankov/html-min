@@ -139,6 +139,7 @@ final class HtmlParser
         bool $keepBrokenHtml = false,
         ?array $specialScriptTags = null,
         ?array $templateLogicSyntaxInSpecialScriptTags = null,
+        ?\Psr\Log\LoggerInterface $logger = null,
     ): DOMDocument {
         $doc = new DOMDocument('1.0', 'UTF-8');
         // Keep whitespace text nodes — sumUpWhitespace() normalizes them later,
@@ -262,6 +263,15 @@ final class HtmlParser
 
         if ($html !== '') {
             $doc->loadHTML($html, $options);
+        }
+
+        if ($logger !== null) {
+            foreach (libxml_get_errors() as $error) {
+                $logger->warning(
+                    rtrim($error->message),
+                    ['line' => $error->line, 'column' => $error->column, 'code' => $error->code],
+                );
+            }
         }
 
         libxml_clear_errors();

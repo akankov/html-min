@@ -20,6 +20,7 @@ return [
     'minimum_severity' => 0,
     'directory_list' => [
         'src',
+        'vendor/psr/log/src',
     ],
     'exclude_analysis_directory_list' => [
         'vendor/',
