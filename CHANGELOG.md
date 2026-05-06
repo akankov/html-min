@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Akankov\HtmlMin\Config\MinifierOptions` — readonly value object with
+  the 29 configurable knobs (24 booleans, 5 array fields). Pass to
+  `new HtmlMin($options)` to bulk-configure instead of chaining the
+  fluent `doX()` setters. `MinifierOptions::defaults()` returns the
+  same configuration as the no-arg `new HtmlMin()` path.
+- `Akankov\HtmlMin\Contract\ObserverPhase` enum with `Before`, `After`,
+  and `Both` cases. `attachObserverToTheDomLoop()` now accepts a phase
+  argument (default `Both`, matching pre-2.2 behaviour) so consumers
+  can scope an observer to a single hook. Removes the hardcoded
+  `OptimizeAttributes`-only-after exemption — the bundled observer
+  registers itself with `ObserverPhase::After` in the constructor.
+- `HtmlMin::setLogger(Psr\Log\LoggerInterface $logger): self` — receive
+  PSR-3 records for libxml parse warnings that were previously
+  swallowed in `libxml_get_errors()` and discarded. Default behaviour
+  (no logger attached) is unchanged silent recovery.
+
+### Changed
+
+- **BREAKING.** `composer.json` now requires `psr/log: ^3.0`.
+  Implementations using PSR-3 v1 or v2 will need to upgrade. The
+  library only depends on the `LoggerInterface` shape, not on any
+  v3-specific feature; the constraint is to avoid version drift.
+
+### Removed
+
+- **BREAKING.** The unused second parameter of `HtmlMin::minify()`
+  (`$decodeUtf8Specials` / `$multiDecodeNewHtmlEntity`) has been
+  deleted from `HtmlMinInterface` and the concrete class. Deprecated
+  in 2.1.0; physically removed here as scheduled. Callers passing a
+  second argument will now get an `ArgumentCountError`. No other
+  output behaviour changes.
+
 ## [2.1.0] — 2026-05-06
 
 Surgical hot-path cleanup behind the v2 contract — no behaviour change for
