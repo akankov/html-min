@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-05-06
+
+Surgical hot-path cleanup behind the v2 contract — no behaviour change for
+correct callers, measurable speed-ups on the bench corpus, and one
+parameter laid down for removal in 2.2.0. Released from PR
+[#10](https://github.com/akankov/html-min/pull/10).
+
 ### Added
 
 - `Akankov\HtmlMin\Internal\DoctypeKind` enum encoding the three document
