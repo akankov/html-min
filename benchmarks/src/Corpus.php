@@ -25,11 +25,62 @@ final class Corpus
     }
 
     /**
+     * Synthetic stress fixtures generated on demand. They probe the cases the
+     * curated corpus doesn't reach: many tiny repeated fragments, very deep
+     * nesting, and attribute-heavy nodes.
+     *
+     * @return array<string, string>
+     */
+    public static function synthetic(): array
+    {
+        return [
+            'repeated-fragments' => self::generateRepeatedFragments(),
+            'deep-nesting'       => self::generateDeepNesting(),
+            'attribute-heavy'    => self::generateAttributeHeavy(),
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function all(): array
     {
-        return [...self::small(), ...self::realWorld()];
+        return [...self::small(), ...self::realWorld(), ...self::synthetic()];
+    }
+
+    private static function generateRepeatedFragments(int $count = 1000): string
+    {
+        $fragment = '<div class="card"><h3>Title %d</h3><p>Body text for card %d, '
+                  . 'including some <em>emphasis</em> and a <a href="https://example.com/i/%d">link</a>.</p></div>';
+        $body = '';
+        for ($i = 0; $i < $count; ++$i) {
+            $body .= \sprintf($fragment, $i, $i, $i);
+        }
+
+        return '<!DOCTYPE html><html lang="en"><head><title>repeated</title></head><body>' . $body . '</body></html>';
+    }
+
+    private static function generateDeepNesting(int $depth = 1000): string
+    {
+        return '<!DOCTYPE html><html><body>'
+             . str_repeat('<div>', $depth)
+             . 'leaf'
+             . str_repeat('</div>', $depth)
+             . '</body></html>';
+    }
+
+    private static function generateAttributeHeavy(int $nodes = 500, int $attrsPerNode = 20): string
+    {
+        $body = '';
+        for ($i = 0; $i < $nodes; ++$i) {
+            $attrs = '';
+            for ($j = 0; $j < $attrsPerNode; ++$j) {
+                $attrs .= \sprintf(' data-attr-%d="value-%d-%d"', $j, $i, $j);
+            }
+            $body .= '<span' . $attrs . '>n' . $i . '</span>';
+        }
+
+        return '<!DOCTYPE html><html><body>' . $body . '</body></html>';
     }
 
     /**

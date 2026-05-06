@@ -6,6 +6,11 @@ namespace Akankov\HtmlMin\Contract;
 
 interface HtmlMinInterface
 {
+    /**
+     * @param bool $decodeUtf8Specials @deprecated since 2.1.0; the flag has been ignored
+     *                                 since the libxml-based parser landed and will be
+     *                                 removed in 2.2.0. Pass-through for one minor only.
+     */
     public function minify(string $html, bool $decodeUtf8Specials = false): string;
 
     public function isDoSortCssClassNames(): bool;

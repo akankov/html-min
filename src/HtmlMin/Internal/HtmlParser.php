@@ -36,6 +36,9 @@ final class HtmlParser
     /** @var array<string, string>|null */
     private static ?array $entityRestoreMap = null;
 
+    /** @var array<string, string>|null */
+    private static ?array $globalEntityMap = null;
+
     /**
      * HTML5 void elements — serialized without a closing tag and without the
      * XHTML self-closing slash.
@@ -286,16 +289,13 @@ final class HtmlParser
      */
     public static function replaceToPreserveHtmlEntities(string $html): string
     {
-        // Apply the <html ⚡ hack first, before the generic "&" replacement
-        // would break it.
-        $html = str_replace(self::AMP_PLACEHOLDER_SEARCH, self::AMP_PLACEHOLDER_REPLACE, $html);
-
-        // Single preg_replace_callback pass to replace URL-metachars inside
-        // http[s]:// URLs. The previous implementation extracted every URL with
-        // preg_match_all and then performed one full-document str_replace per
-        // URL — O(URLs × html_size), which on Wikipedia-scale input (thousands
-        // of links in 744 KB of HTML) was the single largest cost in the whole
-        // minify pipeline (~40 ms / 145 ms total).
+        // The URL placeholder pass is scoped to http(s) URLs (so square/curly
+        // brackets only get masked inside links), so it stays a separate
+        // regex-callback pass. The AMP marker and the entity-significant chars,
+        // however, are document-global; merge them into a single strtr() so
+        // libxml-troublesome characters are masked in one scan instead of two.
+        // strtr picks the longest matching key at each position, so the multi-
+        // byte AMP marker resolves before the single-byte '&'.
         if (str_contains($html, 'http')) {
             $regExUrl = '/(\[?\bhttps?:\/\/[^\s<>]+(?:\(\w+\)|[^[:punct:]\s]|\/|}|]))/i';
             $replaced = preg_replace_callback(
@@ -308,11 +308,20 @@ final class HtmlParser
             }
         }
 
-        return str_replace(
-            array_keys(self::ENTITY_CHAR_PLACEHOLDERS),
-            array_values(self::ENTITY_CHAR_PLACEHOLDERS),
-            $html,
-        );
+        return strtr($html, self::buildGlobalEntityMap());
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function buildGlobalEntityMap(): array
+    {
+        if (self::$globalEntityMap !== null) {
+            return self::$globalEntityMap;
+        }
+
+        return self::$globalEntityMap = [self::AMP_PLACEHOLDER_SEARCH => self::AMP_PLACEHOLDER_REPLACE]
+                                       + self::ENTITY_CHAR_PLACEHOLDERS;
     }
 
     /**

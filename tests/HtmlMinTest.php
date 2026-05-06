@@ -756,6 +756,71 @@ h1 {
     }
 
 
+    public function testEntitySignificantCharactersSurviveRoundTrip(): void
+    {
+        // Globally-replaced chars: &, |, +, %, @ must survive in text content
+        // and in attribute values — they are placeholder-protected before the
+        // libxml round-trip so it cannot rewrite them.
+        $htmlMin = new HtmlMin();
+
+        $html = '<a data-x="a&b|c+d%e@f">a&b|c+d%e@f</a>';
+        $result = $htmlMin->minify($html);
+
+        foreach (['&', '|', '+', '%', '@'] as $char) {
+            self::assertStringContainsString(
+                $char,
+                $result,
+                "global entity-significant char {$char} must survive round-trip",
+            );
+        }
+    }
+
+    public function testUrlMetaCharactersSurviveInsideUrls(): void
+    {
+        // URL-scoped chars: [, ], {, } get placeholder-protected only when
+        // they appear inside an http(s) URL so the DOM round-trip preserves
+        // matrix/template-style segments.
+        $htmlMin = new HtmlMin();
+
+        $html = '<a href="https://example.com/api/{id}/items[0]">go</a>';
+        $result = $htmlMin->minify($html);
+
+        foreach (['[', ']', '{', '}'] as $char) {
+            self::assertStringContainsString(
+                $char,
+                $result,
+                "URL-scoped char {$char} must survive inside an https URL",
+            );
+        }
+    }
+
+    public function testRecurringOptionalEndTagsAreStableAcrossMinifyCalls(): void
+    {
+        // A two-row table re-uses the same (tr, table, tr) and (td, tr, td) shapes,
+        // exactly the pattern a per-instance cache would key on. Run the minifier
+        // twice on the same instance and assert idempotent output, so a buggy
+        // cache that leaks state across calls would surface here.
+        $htmlMin = new HtmlMin();
+
+        $table = '<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>';
+        $first = $htmlMin->minify($table);
+        $second = $htmlMin->minify($table);
+
+        self::assertSame($first, $second, 'minify() must be deterministic across calls');
+        self::assertStringContainsString('<td>a', $first);
+        self::assertStringContainsString('<td>d', $first);
+
+        // Switching to a structurally different doc on the same instance must
+        // not be tainted by the prior call.
+        $list = '<ul><li>1<li>2<li>3</ul>';
+        $listOut = $htmlMin->minify($list);
+        self::assertStringContainsString('<li>1', $listOut);
+        self::assertStringContainsString('<li>3', $listOut);
+
+        // Returning to the table after the list call must reproduce the first run.
+        self::assertSame($first, $htmlMin->minify($table));
+    }
+
     public function testDoctypeStateDoesNotLeakBetweenMinifyCalls(): void
     {
         $xhtml = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><body><p>x</p></body></html>';
