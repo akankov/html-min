@@ -178,6 +178,11 @@ class HtmlMin implements HtmlMinInterface
      */
     private array $protectedChildNodes = [];
 
+    // Load-bearing literal: this exact tag name is inserted into a DOMElement
+    // nodeValue / DOMText and the post-serialize regex expects to find it raw
+    // in the output. Renaming to a shorter `htmlmin-*` form changes how libxml
+    // serialises the surrounding text-vs-markup boundary and the placeholder
+    // ends up entity-escaped — restoration silently fails. Leave it.
     private string $protectedChildNodesHelper = 'html-min--voku--saved-content';
 
     private bool $doOptimizeViaHtmlDomParser = true;
@@ -585,7 +590,7 @@ class HtmlMin implements HtmlMinInterface
                            &&
                            $attrValue !== ''
                            &&
-                           !str_starts_with($attrName, '____SIMPLE_HTML_DOM__VOKU')
+                           !HtmlParser::isPlaceholder($attrName)
                            &&
                            !str_contains($attrName, ' ')
                            &&

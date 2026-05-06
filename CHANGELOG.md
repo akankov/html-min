@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Internal placeholder values in `Internal\HtmlParser` no longer wear the
+  `____SIMPLE_HTML_DOM__VOKU__*____` legacy naming — they now use
+  `____HTMLMIN_*____`. The byte shape (4-underscore delimiters, distinctive
+  prefix) is preserved so the collision-resistance property is unchanged.
+- The leaky `str_starts_with($attrName, '____SIMPLE_HTML_DOM__VOKU')`
+  check that decided whether to omit attribute-value quotes is replaced
+  by a `HtmlParser::isPlaceholder()` predicate so the placeholder
+  prefix has exactly one source of truth. Internal-only — no public
+  surface change.
+
 ## [2.2.0] — 2026-05-06
 
 Configuration ergonomics, observer lifecycle, PSR-3 diagnostics — plus the
