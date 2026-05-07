@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `bin/html-min` CLI binary. Reads HTML from `stdin` (or a file path
+  argument) and writes minified HTML to `stdout` (or to `--output=PATH`).
+  Wired into `composer.json`'s `bin` field so consumers get
+  `vendor/bin/html-min` automatically. Exit codes: `0` success, `1`
+  I/O failure, `2` invalid argument. Driven by a testable
+  `Akankov\HtmlMin\Cli\Cli` class so the integration tests use
+  `php://memory` streams and don't shell out.
+
 ## [2.3.0] — 2026-05-07
 
 PSR-15 middleware ships, the voku-era placeholder naming is gone from
