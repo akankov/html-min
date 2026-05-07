@@ -7,8 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Akankov\HtmlMin\Middleware\MinifierMiddleware` — PSR-15 middleware
+  that minifies HTML response bodies on the way out of an HTTP stack.
+  Inject an `HtmlMin` and a PSR-17 `StreamFactoryInterface`; optional
+  third constructor argument is the content-type allowlist (default
+  `['text/html']`). Other content types pass through unchanged so the
+  middleware is safe to sit in front of mixed JSON / HTML stacks.
+  `Content-Type` parameters (e.g. `; charset=utf-8`) are stripped
+  before the allowlist comparison.
+
 ### Changed
 
+- `composer.json` now requires `psr/http-server-middleware ^1.0`,
+  `psr/http-message ^1.1 || ^2.0`, and `psr/http-factory ^1.0`. These
+  are interface-only packages (~10 KB total) so the cost on consumers
+  who don't use the middleware is negligible; the alternative
+  (`suggest:`) trades that for "class not found" errors at instantiation
+  time, which is worse UX. `nyholm/psr7` is added to `require-dev` for
+  the middleware test suite.
 - Internal placeholder values in `Internal\HtmlParser` no longer wear the
   `____SIMPLE_HTML_DOM__VOKU__*____` legacy naming — they now use
   `____HTMLMIN_*____`. The byte shape (4-underscore delimiters, distinctive

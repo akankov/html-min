@@ -23,10 +23,14 @@
     "ext-dom": "*",
     "ext-libxml": "*",
     "ext-mbstring": "*",
+    "psr/http-factory": "^1.0",
+    "psr/http-message": "^1.1 || ^2.0",
+    "psr/http-server-middleware": "^1.0",
     "psr/log": "^3.0"
   },
   "require-dev": {
     "friendsofphp/php-cs-fixer": "^3.65",
+    "nyholm/psr7": "^1.8",
     "phan/phan": "^6.0",
     "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^12.0",
