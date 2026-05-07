@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] — 2026-05-07
+
+PHAR distribution lands. `dist/html-min.phar` is a self-contained ~93 KB
+binary that runs anywhere PHP 8.3+ is installed — no Composer required.
+Completes the CLI distribution story started in v2.4.0. Released from PR
+[#15](https://github.com/akankov/html-min/pull/15).
+
 ### Added
 
 - `bin/build-phar.php` + `make phar` target — builds
