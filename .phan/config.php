@@ -20,6 +20,10 @@ return [
     'minimum_severity' => 0,
     'directory_list' => [
         'src',
+        'vendor/psr/http-factory/src',
+        'vendor/psr/http-message/src',
+        'vendor/psr/http-server-handler/src',
+        'vendor/psr/http-server-middleware/src',
         'vendor/psr/log/src',
     ],
     'exclude_analysis_directory_list' => [
