@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `bin/build-phar.php` + `make phar` target — builds
+  `dist/html-min.phar`, a self-contained ~93 KB binary bundling the
+  library, runtime PSR dependencies, and Composer's autoloader.
+  Invoke as `php dist/html-min.phar input.html` or directly
+  (`./dist/html-min.phar`, mode `0755`). Build runs `composer install
+--no-dev` against a staging copy of the project so the bundled
+  autoloader doesn't try to require dev-only files-autoload entries
+  (phpunit / phpstan / phan transitive deps). Files-autoload entries
+  are gone, GZ compression on, stub points at the existing
+  `bin/html-min` entry script.
+- `dist/` added to `.gitignore`.
+
 ## [2.4.0] — 2026-05-07
 
 CLI distribution. `vendor/bin/html-min` lands as a real binary backed by

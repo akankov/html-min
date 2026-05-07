@@ -59,6 +59,9 @@ rector: ## Apply rector refactors
 rector-check: ## Preview rector refactors without modifying files
 	$(PHP) vendor/bin/rector process --dry-run
 
+phar: ## Build dist/html-min.phar (self-contained CLI bundle)
+	$(DOCKER_RUN) composer:2 php -d phar.readonly=Off bin/build-phar.php
+
 md: ## Format tracked Markdown files
 	$(MARKDOWN_FMT) --write $(MARKDOWN_FILES)
 
