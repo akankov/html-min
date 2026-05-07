@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] — 2026-05-07
+
+CLI distribution. `vendor/bin/html-min` lands as a real binary backed by
+a testable `Cli` class. PHAR distribution for non-Composer consumers
+remains queued for a future release. Released from PR
+[#14](https://github.com/akankov/html-min/pull/14).
+
 ### Added
 
 - `bin/html-min` CLI binary. Reads HTML from `stdin` (or a file path
