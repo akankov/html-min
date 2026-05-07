@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-05-07
+
+PSR-15 middleware ships, the voku-era placeholder naming is gone from
+the URL/entity preprocessing layer, and the prefix coupling between
+`HtmlMin` and `HtmlParser` collapses behind a single predicate. No
+breaking changes. Released from PRs
+[#12](https://github.com/akankov/html-min/pull/12) and
+[#13](https://github.com/akankov/html-min/pull/13).
+
 ### Added
 
 - `Akankov\HtmlMin\Middleware\MinifierMiddleware` — PSR-15 middleware
