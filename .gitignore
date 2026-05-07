@@ -6,6 +6,9 @@ composer.lock
 build/
 .phpunit.result.cache
 
+# phar build output
+dist/
+
 .php-cs-fixer.cache
 .phpstan.cache
 .phpunit.cache
