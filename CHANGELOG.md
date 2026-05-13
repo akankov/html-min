@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.1] — 2026-05-13
+
+Documentation cleanup release. Legacy upstream naming is removed from runtime
+placeholders, parser/test comments, and user-facing docs. Benchmark comparisons
+continue to name third-party adapters by design. Released from PR
+[#16](https://github.com/akankov/html-min/pull/16).
+
 ### Changed
 
 - Removed legacy upstream naming from runtime placeholders, parser comments,
@@ -392,4 +399,5 @@ surface.
 [1.1.0]: https://github.com/akankov/html-min/releases/tag/v1.1.0
 [1.2.0]: https://github.com/akankov/html-min/releases/tag/v1.2.0
 [2.0.0]: https://github.com/akankov/html-min/releases/tag/v2.0.0
-[unreleased]: https://github.com/akankov/html-min/compare/v2.0.0...HEAD
+[2.5.1]: https://github.com/akankov/html-min/releases/tag/v2.5.1
+[unreleased]: https://github.com/akankov/html-min/compare/v2.5.1...HEAD
