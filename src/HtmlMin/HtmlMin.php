@@ -178,12 +178,12 @@ class HtmlMin implements HtmlMinInterface
      */
     private array $protectedChildNodes = [];
 
-    // Load-bearing literal: this exact tag name is inserted into a DOMElement
+    // Load-bearing literal: this tag name is inserted into a DOMElement
     // nodeValue / DOMText and the post-serialize regex expects to find it raw
-    // in the output. Renaming to a shorter `htmlmin-*` form changes how libxml
-    // serialises the surrounding text-vs-markup boundary and the placeholder
-    // ends up entity-escaped — restoration silently fails. Leave it.
-    private string $protectedChildNodesHelper = 'html-min--voku--saved-content';
+    // in the output. Shorter `htmlmin-*` forms can change how libxml serializes
+    // the surrounding text-vs-markup boundary and leave the placeholder
+    // entity-escaped, which silently breaks restoration.
+    private string $protectedChildNodesHelper = 'html-min--protected--saved-content';
 
     private bool $doOptimizeViaHtmlDomParser = true;
 
@@ -1645,9 +1645,8 @@ class HtmlMin implements HtmlMinInterface
                 }
             }
 
-            // Match voku behavior: <script>/<style> content has its leading and
-            // trailing whitespace stripped (fixture tests rely on this). Internal
-            // whitespace is preserved.
+            // Protected <script>/<style> content keeps internal whitespace, while
+            // leading and trailing padding is stripped before serialization.
             $inner = HtmlParser::innerHtml($element);
             if ($element->tagName === 'script' || $element->tagName === 'style') {
                 $inner = trim($inner);

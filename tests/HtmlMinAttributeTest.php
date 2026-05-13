@@ -163,9 +163,8 @@ final class HtmlMinAttributeTest extends TestCase
         $html = '<script type="text/javascript">alert("Hello");</script>
                 <script type="text/ecmascript" src="ecmascript.js"></script>';
         // DOMDocument preserves the newline+indent between the two top-level
-        // <script> tags as a single collapsed space (voku dropped it). The
-        // type-attribute cleanup (the actual purpose of this test) still
-        // happens as expected.
+        // <script> tags as a single collapsed space. The type-attribute cleanup
+        // (the actual purpose of this test) still happens as expected.
         $expected = '<script>alert("Hello");</script> <script src=ecmascript.js></script>';
 
         $htmlMin = new HtmlMin();

@@ -149,7 +149,7 @@ return PhpCsFixer\Config::create()
                                 'phpdoc_indent'                                 => true,
                                 'phpdoc_inline_tag'                             => true,
                                 'phpdoc_no_access'                              => true,
-                                'phpdoc_no_alias_tag'                           => false, // simple_html_dom is using "property-read"
+                                'phpdoc_no_alias_tag'                           => false,
                                 'phpdoc_no_empty_return'                        => false, // maybe better for readability, so keep it ...
                                 'phpdoc_no_package'                             => true,
                                 'phpdoc_no_useless_inheritdoc'                  => true,
