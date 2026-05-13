@@ -152,13 +152,6 @@ vendor/bin/php-cs-fixer fix   # code style
 
 CI runs the full matrix (PHP 8.3 / 8.4 / 8.5) on every push and pull request.
 
-## Migrating from voku/html-min
-
-This package began as a fork of [voku/HtmlMin](https://github.com/voku/HtmlMin).
-If you're upgrading from that package, see
-[UPGRADE-FROM-VOKU.md](UPGRADE-FROM-VOKU.md) for the namespace map and the one
-breaking change to the `DomObserver` interface.
-
 ## License
 
 MIT — see [LICENSE](LICENSE).

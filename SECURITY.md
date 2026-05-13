@@ -48,8 +48,7 @@ Findings in scope:
 
 Out of scope:
 
-- Issues in `voku/HtmlMin` upstream (report those to
-  [voku/HtmlMin](https://github.com/voku/HtmlMin)).
+- Issues in third-party minifiers used only by the benchmark suite.
 - Issues that require a malicious maintainer to already be running code
   on your system.
 - Findings in the dev-only toolchain (PHPUnit, PHPStan, etc.) unless

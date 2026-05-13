@@ -14,7 +14,7 @@ BENCH_GIT_SHA   := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknow
 BENCH_GIT_DIRTY := $(shell git diff-index --quiet HEAD -- 2>/dev/null && echo clean || echo dirty)
 BENCH_PHP       := docker run --rm -v "$(CURDIR)":/app -w /app/benchmarks -e BENCH_GIT_SHA=$(BENCH_GIT_SHA) -e BENCH_GIT_DIRTY=$(BENCH_GIT_DIRTY) $(PHP_IMAGE) php
 BENCH_COMPOSER := docker run --rm -v "$(CURDIR)":/app -w /app/benchmarks composer:2 composer
-MARKDOWN_FILES := $(shell git ls-files -- '*.md' ':!:latest.md')
+MARKDOWN_FILES := $(shell git ls-files -- '*.md' ':!:latest.md' | while IFS= read -r file; do test -f "$$file" && printf '%s\n' "$$file"; done)
 MARKDOWN_FMT   := bin/markdown-format
 
 help: ## Show this help

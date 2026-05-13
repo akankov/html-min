@@ -20,8 +20,8 @@ use const XML_PI_NODE;
 /**
  * HTML5-aware adapter around \DOMDocument.
  *
- * Replaces voku/simple_html_dom for our minifier's needs. Wraps libxml's HTML
- * parser with the pre- and post-processing steps voku did internally:
+ * Wraps libxml's HTML parser with the pre- and post-processing steps this
+ * minifier needs:
  *
  *   - preserve UTF-8 (libxml defaults to ISO-8859-1),
  *   - escape entity-like characters (`&`, `|`, `+`, `%`, `@`, `[`, `]`,
@@ -217,7 +217,7 @@ final class HtmlParser
                     }
                 }
             } else {
-                // Default special-script tags (matches voku defaults).
+                // Default special-script template MIME types.
                 $defaultSpecialTags = [
                     'text/html',
                     'text/template',
@@ -238,8 +238,8 @@ final class HtmlParser
             self::keepSpecialSvgTags($html);
         }
 
-        // Apply placeholder wrapping to prevent libxml from collapsing
-        // "<br>" into "<br/>" etc. — same as voku.
+        // Normalize void tags before libxml sees them; serialization later
+        // emits the doctype-appropriate form.
         $html = str_replace(
             array_map(static fn (string $e): string => '<' . $e . '>', array_keys(self::VOID_TAGS)),
             array_map(static fn (string $e): string => '<' . $e . '/>', array_keys(self::VOID_TAGS)),
@@ -267,8 +267,8 @@ final class HtmlParser
             $options |= LIBXML_COMPACT;
         }
         $options |= LIBXML_HTML_NODEFDTD;
-        // Always skip the implied <html><body> wrapper — matches voku's behavior.
-        // We add our own <htmlmin-wrapper> for multi-root fragments upstream.
+        // Always skip libxml's implied <html><body> wrapper. Multi-root
+        // fragments get an explicit <htmlmin-wrapper> above.
         $options |= LIBXML_HTML_NOIMPLIED;
 
         // UTF-8 hack.
@@ -313,9 +313,8 @@ final class HtmlParser
     }
 
     /**
-     * Pre-load entity-preserving replacement, mirrors voku's implementation
-     * byte-for-byte so downstream regex filters that look for these markers
-     * keep working.
+     * Pre-load entity-preserving replacement so libxml does not rewrite
+     * URL/entity-significant characters before serialization.
      */
     public static function replaceToPreserveHtmlEntities(string $html): string
     {
@@ -585,8 +584,8 @@ final class HtmlParser
     }
 
     /**
-     * Port of voku's html5FallbackForScriptTags: protects raw "</" sequences
-     * inside <script> bodies.
+     * Protects raw "</" sequences inside <script> bodies before libxml parses
+     * the document.
      */
     private static function html5FallbackForScriptTags(string &$html): void
     {
@@ -609,10 +608,9 @@ final class HtmlParser
     }
 
     /**
-     * Port of voku's keepSpecialScriptTags: renames special-template script
-     * tags to a non-script placeholder element so libxml leaves their bodies
-     * untouched. Bodies containing template-logic tokens get stashed in
-     * self::$brokenHtmlMap for later reinsertion.
+     * Renames special-template script tags to a non-script placeholder element
+     * so libxml leaves their bodies untouched. Bodies containing template-logic
+     * tokens get stashed in self::$brokenHtmlMap for later reinsertion.
      *
      * @param string[] $specialScriptTags
      * @param string[] $templateLogicSyntax
@@ -680,9 +678,9 @@ final class HtmlParser
     }
 
     /**
-     * Voku's keepBrokenHtml: wrap all well-formed tag pairs, mark the leftover
-     * unbalanced bits, then restore the wrapped ones. Anything unbalanced ends
-     * up in self::$brokenHtmlMap keyed by crc32 hash.
+     * Wrap all well-formed tag pairs, mark the leftover unbalanced bits, then
+     * restore the wrapped ones. Anything unbalanced ends up in
+     * self::$brokenHtmlMap keyed by crc32 hash.
      */
     private static function rewriteBrokenHtml(string $html): string
     {
@@ -691,9 +689,9 @@ final class HtmlParser
             $html = (string) preg_replace_callback(
                 '/(?<start>.*)<(?<element_start>[a-z]+)(?<element_start_addon> [^>]*)?>(?<value>.*?)<\/(?<element_end>\2)>(?<end>.*)/sui',
                 static fn ($m): string => $m['start']
-                        . '°lt_simple_html_dom__voku_°' . $m['element_start'] . $m['element_start_addon'] . '°gt_simple_html_dom__voku_°'
+                        . '°lt_html_min__saved_°' . $m['element_start'] . $m['element_start_addon'] . '°gt_html_min__saved_°'
                         . $m['value']
-                        . '°lt/_simple_html_dom__voku_°' . $m['element_end'] . '°gt_simple_html_dom__voku_°'
+                        . '°lt/_html_min__saved_°' . $m['element_end'] . '°gt_html_min__saved_°'
                         . $m['end'],
                 $html,
             );
@@ -705,7 +703,7 @@ final class HtmlParser
                 '/(?<start>[^<]*)?(?<broken>(?:<\/\w+(?:\s+\w+="[^"]+")*+[^<]+>)+)(?<end>.*)/u',
                 static function (array $m): string {
                     $m['broken'] = str_replace(
-                        ['°lt/_simple_html_dom__voku_°', '°lt_simple_html_dom__voku_°', '°gt_simple_html_dom__voku_°'],
+                        ['°lt/_html_min__saved_°', '°lt_html_min__saved_°', '°gt_html_min__saved_°'],
                         ['</', '<', '>'],
                         $m['broken'],
                     );
@@ -720,7 +718,7 @@ final class HtmlParser
         } while ($original !== $html);
 
         return str_replace(
-            ['°lt/_simple_html_dom__voku_°', '°lt_simple_html_dom__voku_°', '°gt_simple_html_dom__voku_°'],
+            ['°lt/_html_min__saved_°', '°lt_html_min__saved_°', '°gt_html_min__saved_°'],
             ['</', '<', '>'],
             $html,
         );

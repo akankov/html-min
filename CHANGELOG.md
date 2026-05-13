@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Removed legacy upstream naming from runtime placeholders, parser comments,
+  tests, and user-facing docs. Benchmark comparisons still retain third-party
+  adapter names by design.
+
+### Removed
+
+- Deleted the legacy package migration guide from the published docs.
+
 ## [2.5.0] — 2026-05-07
 
 PHAR distribution lands. `dist/html-min.phar` is a self-contained ~93 KB
@@ -47,7 +57,7 @@ remains queued for a future release. Released from PR
 
 ## [2.3.0] — 2026-05-07
 
-PSR-15 middleware ships, the voku-era placeholder naming is gone from
+PSR-15 middleware ships, the legacy placeholder naming is gone from
 the URL/entity preprocessing layer, and the prefix coupling between
 `HtmlMin` and `HtmlParser` collapses behind a single predicate. No
 breaking changes. Released from PRs
@@ -75,10 +85,10 @@ breaking changes. Released from PRs
   time, which is worse UX. `nyholm/psr7` is added to `require-dev` for
   the middleware test suite.
 - Internal placeholder values in `Internal\HtmlParser` no longer wear the
-  `____SIMPLE_HTML_DOM__VOKU__*____` legacy naming — they now use
+  old simple-html-dom-derived naming — they now use
   `____HTMLMIN_*____`. The byte shape (4-underscore delimiters, distinctive
   prefix) is preserved so the collision-resistance property is unchanged.
-- The leaky `str_starts_with($attrName, '____SIMPLE_HTML_DOM__VOKU')`
+- The leaky hardcoded placeholder-prefix check
   check that decided whether to omit attribute-value quotes is replaced
   by a `HtmlParser::isPlaceholder()` predicate so the placeholder
   prefix has exactly one source of truth. Internal-only — no public
@@ -173,7 +183,7 @@ parameter laid down for removal in 2.2.0. Released from PR
 - The second parameter on `HtmlMin::minify()` (declared as
   `$decodeUtf8Specials` on `HtmlMinInterface`, `$multiDecodeNewHtmlEntity`
   on the concrete class) has been ignored since the libxml-based parser
-  replaced `voku/simple_html_dom`. It is now marked `@deprecated` and
+  replaced the old simple-html-dom backend. It is now marked `@deprecated` and
   will be removed in 2.2.0. Callers passing `true` should drop the
   argument; output is unchanged either way.
 
@@ -258,19 +268,18 @@ test-all`).
   `benchmarks/build/quick-report.md` instead of the published
   `latest.md`. Quick local iteration loops can no longer
   accidentally publish 2-iteration noise.
-- README, `UPGRADE-FROM-VOKU.md`, and `CHANGELOG` updated to
-  describe the actual two-method `DomObserver` interface
+- README and `CHANGELOG` updated to describe the actual two-method
+  `DomObserver` interface
   (`domElementBeforeMinification` + `domElementAfterMinification`).
-  Docs still referenced voku's single
-  `notifyDomNodeManipulationEvent()` from before the v1.0.0 split.
+  Docs still referenced the old single `notifyDomNodeManipulationEvent()`
+  hook from before the v1.0.0 split.
 
 ### Removed
 
 - **BREAKING.** `setDomainsToRemoveHttpPrefixFromAttributes()`,
   `getDomainsToRemoveHttpPrefixFromAttributes()`, the corresponding
-  field, and the `HtmlMinInterface` entry. Inherited dead code from
-  voku — no observer or pipeline stage ever read the domain list,
-  so the public setter mutated state nothing consumed.
+  field, and the `HtmlMinInterface` entry. No observer or pipeline stage ever
+  read the domain list, so the public setter mutated state nothing consumed.
 - `.github/dependabot.yml`. Renovate (already present) is the
   single source of truth and auto-discovers
   `benchmarks/composer.json` via the `config:base` preset; the
@@ -338,18 +347,18 @@ test-all`).
 
 ## [1.0.0] — 2026-04-17
 
-First stable release. Maintained fork of [voku/HtmlMin](https://github.com/voku/HtmlMin)
-with a native `\DOMDocument` backend and a modernized type surface.
+First stable release with a native `\DOMDocument` backend and a modernized type
+surface.
 
 ### Added
 
 - `Akankov\HtmlMin\Internal\HtmlParser` — a native `\DOMDocument` + `\DOMXPath`
-  adapter that replaces `voku/simple_html_dom` end-to-end.
+  adapter for parser and DOM traversal work.
 - GitHub Actions CI matrix on PHP 8.3 / 8.4 / 8.5.
 - PHPStan analysis at `level: max`.
 - Phan static analysis (via `ext-ast`) in CI.
 - PHP-CS-Fixer code-style enforcement.
-- `UPGRADE-FROM-VOKU.md` migration guide.
+- Migration notes for the package and namespace changes.
 - Makefile with `install`, `update`, `outdated`, `test`, `test-all`,
   `phpstan`, `phan`, `cs`, `rector`, `quality`, `ci`, `clean` targets.
 - Dependabot configuration for `composer` and `github-actions` ecosystems.
@@ -357,10 +366,9 @@ with a native `\DOMDocument` backend and a modernized type surface.
 ### Changed
 
 - `DomObserver` (renamed from `HtmlMinDomObserverInterface`) replaces
-  voku's single `notifyDomNodeManipulationEvent()` with two lifecycle
+  the old single `notifyDomNodeManipulationEvent()` hook with two lifecycle
   methods, `domElementBeforeMinification()` and
-  `domElementAfterMinification()`, both receiving `\DOMElement` instead
-  of `voku\helper\SimpleHtmlDomInterface`.
+  `domElementAfterMinification()`, both receiving `\DOMElement`.
 - Placeholder element names switched to hyphen-safe custom-element form
   (`htmlmin-wrapper`, `htmlmin-protected`, etc.) for libxml2 ≥ 2.9.14
   compatibility — no Reflection hacks.
@@ -369,7 +377,7 @@ with a native `\DOMDocument` backend and a modernized type surface.
 
 ### Removed
 
-- `voku/simple_html_dom` runtime dependency.
+- The old simple-html-dom runtime dependency.
 - Support for PHP < 8.3 (all EOL branches).
 - Upstream's Travis/CircleCI/StyleCI configs — GitHub Actions only.
 
@@ -377,12 +385,6 @@ with a native `\DOMDocument` backend and a modernized type surface.
 
 - PHP 8.5 deprecations (`SplObjectStorage::attach`, nullable `parentNode`).
 - libxml2 ≥ 2.9.14 rejecting placeholder element names starting with `_`.
-
-## Pre-1.0 history
-
-This package is a fork of [voku/HtmlMin](https://github.com/voku/HtmlMin).
-For the pre-fork changelog (versions 1.x – 4.5.x), see the upstream
-[CHANGELOG](https://github.com/voku/HtmlMin/blob/master/CHANGELOG.md).
 
 [#5]: https://github.com/akankov/html-min/pull/5
 [#8]: https://github.com/akankov/html-min/pull/8

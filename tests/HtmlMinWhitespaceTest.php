@@ -66,8 +66,7 @@ final class HtmlMinWhitespaceTest extends TestCase
                 // single text node after the html-open-tag; no collapse is
                 // performed on multiple spaces at that location because we
                 // never recurse into that text node's whitespace (it isn't
-                // "element content whitespace"). Semantically equivalent to
-                // voku's output.
+                // "element content whitespace").
                 '<html>  a',
                 '<html>  a',
             ],

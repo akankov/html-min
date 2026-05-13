@@ -1,6 +1,6 @@
 {
   "name": "akankov/html-min",
-  "description": "HTML Compressor and Minifier (maintained fork of voku/HtmlMin)",
+  "description": "HTML compressor and minifier for PHP 8.3+",
   "keywords": [
     "html",
     "compress",

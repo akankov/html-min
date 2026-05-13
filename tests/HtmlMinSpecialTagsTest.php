@@ -97,8 +97,8 @@ final class HtmlMinSpecialTagsTest extends TestCase
     {
         $html = '<pre class="line-numbers mb-0"><code class="language-php" id="code">&lt;?php if(!defined(\'NormanHuth\') &amp;&amp; NormanHuth!=\'Public\') die(\'Access denied\');' . "\r\n" . '</code></pre>';
 
-        // Unlike voku's parser, libxml preserves CRLF byte-for-byte inside
-        // <code> (protected content), so we expect the CR to survive.
+        // Protected <code> content preserves CRLF byte-for-byte, so the CR is
+        // expected to survive.
         $expected = '<pre class="line-numbers mb-0"><code class="language-php" id="code">&lt;?php if(!defined(\'NormanHuth\') &amp;&amp; NormanHuth!=\'Public\') die(\'Access denied\');' . "\r\n" . '</code></pre>';
 
         $htmlMin = new HtmlMin();

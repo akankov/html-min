@@ -51,10 +51,8 @@ final class HtmlMinTest extends TestCase
 
         $compressedHtml = $htmlMin->minify($html);
 
-        // DOMDocument-based parser preserves the inner whitespace and the
-        // closing </p> tags that voku collapsed; the HTML is semantically
-        // equivalent to voku's output (all text nodes and element boundaries
-        // match).
+        // DOMDocument-based parsing preserves the inner whitespace and closing
+        // </p> tags while keeping the text nodes and element boundaries intact.
         $expectd = '<p>
 	foo <code>bar</code>. ZIiiii  zzz <code>1.1</code> Lorem ipsum dolor sit amet, consectetur adipiscing elit.
 </p>
@@ -602,10 +600,9 @@ h1 {
 
         $html = '<p><!--INT_SCRIPT test1 --> lall <!-- test2 --></p> <!-- test2 END_INI_SCRIPT-->';
 
-        // DOMDocument preserves the exact comment contents (including the
-        // one-character padding around "test1" and "test2"); voku trimmed
-        // them during its own comment walk. Non-special <!-- test2 --> is
-        // still removed, special end-marker comment is still preserved.
+        // DOMDocument preserves exact comment contents, including the padding
+        // around "test1" and "test2". Non-special <!-- test2 --> is still
+        // removed, and the special end-marker comment is still preserved.
         $expected = '<p><!--INT_SCRIPT test1 --> lall  <!-- test2 END_INI_SCRIPT-->';
 
         self::assertSame($expected, $htmlMin->minify($html));
