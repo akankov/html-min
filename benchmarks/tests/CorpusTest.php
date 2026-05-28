@@ -14,9 +14,9 @@ final class CorpusTest extends TestCase
         self::assertCount(6, Corpus::small());
     }
 
-    public function testRealWorldTierHasFiveFixtures(): void
+    public function testRealWorldTierHasSixFixtures(): void
     {
-        self::assertCount(5, Corpus::realWorld());
+        self::assertCount(6, Corpus::realWorld());
     }
 
     public function testSmallFixturesAreNonEmpty(): void
@@ -51,7 +51,7 @@ final class CorpusTest extends TestCase
 
     public function testAllReturnsUnionOfAllTiers(): void
     {
-        self::assertCount(14, Corpus::all());
+        self::assertCount(15, Corpus::all());
     }
 
     public function testFixtureNamesAreStableIdentifiers(): void

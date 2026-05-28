@@ -49,6 +49,8 @@ final readonly class MinifierOptions
         public bool $sumUpWhitespace = true,
         public bool $removeSpacesBetweenTags = false,
         public bool $keepBrokenHtml = false,
+        public bool $minifyInlineCss = false,
+        public bool $minifyInlineJs = false,
         public array $localDomains = [],
         public array $specialHtmlCommentsStartingWith = [],
         public array $specialHtmlCommentsEndingWith = [],

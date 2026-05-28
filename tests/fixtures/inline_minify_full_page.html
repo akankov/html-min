@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inline minify smoke</title>
+<style>
+  /* prevent FOUC */
+  html { visibility: hidden; }
+  body  ,  main {
+    font-family: system-ui, sans-serif;
+    margin: 0  16px;
+  }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Demo"
+}
+</script>
+</head>
+<body>
+<main>
+<h1>Demo</h1>
+<script>
+// bootstrap
+(function () {
+  const root = document.documentElement;
+  root.classList.add('js');
+  const ready = /^(complete|interactive)$/;
+  if (ready.test(document.readyState)) {
+    root.style.visibility = 'visible';
+  }
+})();
+</script>
+</main>
+</body>
+</html>

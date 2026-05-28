@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Inline CSS and JS minification (opt-in).** Two new toggles minify the
+  contents of inline `<style>` and `<script>` blocks, which previously
+  round-tripped untouched:
+    - `HtmlMin::doMinifyInlineCss(bool $on = true)` — strips CSS comments and
+      collapses whitespace. String and `url(...)` contents are preserved.
+    - `HtmlMin::doMinifyInlineJs(bool $on = true)` — conservative, ASI-safe
+      minification: removes comments and collapses horizontal whitespace while
+      preserving newlines, strings, regex literals, and template literals.
+      `<script>` elements whose `type` is not a JavaScript type (e.g.
+      `application/ld+json`, `text/x-template`) pass through untouched, as do
+      `<script src="...">` references.
+    - Both default to **off**, so existing output is unchanged.
+- **Pluggable minifier backends.** `HtmlMin::setInlineCssMinifier(?callable)`
+  and `HtmlMin::setInlineJsMinifier(?callable)` replace the bundled minifiers
+  with any `callable(string): string` (e.g. wrap `matthiasmullie/minify` or
+  shell out to `terser`). Pass `null` to restore the bundled default. A buggy
+  bundled minifier is logged via the PSR-3 logger and falls back to the
+  original source so the page is never corrupted.
+- `MinifierOptions` gains `minifyInlineCss` and `minifyInlineJs` fields
+  (both default `false`).
+- CLI flags `--minify-inline-css` and `--minify-inline-js`.
+
 ## [2.5.1] — 2026-05-13
 
 Documentation cleanup release. Legacy upstream naming is removed from runtime

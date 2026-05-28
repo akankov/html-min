@@ -10,7 +10,11 @@ use Akankov\HtmlMin\Contract\HtmlMinInterface;
 use Akankov\HtmlMin\Contract\ObserverPhase;
 use Akankov\HtmlMin\Internal\DoctypeKind;
 use Akankov\HtmlMin\Internal\HtmlParser;
+use Akankov\HtmlMin\Internal\Minifier\InlineCssMinifier;
+use Akankov\HtmlMin\Internal\Minifier\InlineJsMinifier;
+use Akankov\HtmlMin\Internal\Minifier\InlineMinifier;
 use Akankov\HtmlMin\Observer\OptimizeAttributes;
+use Closure;
 use DOMAttr;
 use DOMComment;
 use DOMDocument;
@@ -22,6 +26,7 @@ use InvalidArgumentException;
 use Override;
 use Psr\Log\LoggerInterface;
 use SplObjectStorage;
+use Throwable;
 
 use const XML_TEXT_NODE;
 
@@ -250,6 +255,20 @@ class HtmlMin implements HtmlMinInterface
 
     private bool $keepBrokenHtml = false;
 
+    private bool $doMinifyInlineCss = false;
+
+    private bool $doMinifyInlineJs = false;
+
+    /**
+     * @var (Closure(string): string)|null
+     */
+    private ?Closure $inlineCssMinifier = null;
+
+    /**
+     * @var (Closure(string): string)|null
+     */
+    private ?Closure $inlineJsMinifier = null;
+
     private bool $withDocType = false;
 
     /** @var SplObjectStorage<DomObserver, DomObserver> */
@@ -330,6 +349,8 @@ class HtmlMin implements HtmlMinInterface
         $this->doSumUpWhitespace = $options->sumUpWhitespace;
         $this->doRemoveSpacesBetweenTags = $options->removeSpacesBetweenTags;
         $this->keepBrokenHtml = $options->keepBrokenHtml;
+        $this->doMinifyInlineCss = $options->minifyInlineCss;
+        $this->doMinifyInlineJs = $options->minifyInlineJs;
         $this->localDomains = $options->localDomains;
         $this->specialHtmlCommentsStaringWith = $options->specialHtmlCommentsStartingWith;
         $this->specialHtmlCommentsEndingWith = $options->specialHtmlCommentsEndingWith;
@@ -376,6 +397,52 @@ class HtmlMin implements HtmlMinInterface
     public function doRemoveDefaultAttributes(bool $doRemoveDefaultAttributes = true): self
     {
         $this->doRemoveDefaultAttributes = $doRemoveDefaultAttributes;
+
+        return $this;
+    }
+
+
+    public function doMinifyInlineCss(bool $doMinifyInlineCss = true): self
+    {
+        $this->doMinifyInlineCss = $doMinifyInlineCss;
+
+        return $this;
+    }
+
+
+    public function doMinifyInlineJs(bool $doMinifyInlineJs = true): self
+    {
+        $this->doMinifyInlineJs = $doMinifyInlineJs;
+
+        return $this;
+    }
+
+
+    /**
+     * Replace the bundled inline CSS minifier with a user-supplied
+     * callable that takes the raw CSS source and returns a minified
+     * string. Pass `null` to restore the bundled default.
+     *
+     * @param (callable(string): string)|null $minifier
+     */
+    public function setInlineCssMinifier(?callable $minifier): self
+    {
+        $this->inlineCssMinifier = $minifier === null ? null : Closure::fromCallable($minifier);
+
+        return $this;
+    }
+
+
+    /**
+     * Replace the bundled inline JS minifier with a user-supplied
+     * callable (e.g. wrap `matthiasmullie/minify` or a shell-out to
+     * `terser`). Pass `null` to restore the bundled default.
+     *
+     * @param (callable(string): string)|null $minifier
+     */
+    public function setInlineJsMinifier(?callable $minifier): self
+    {
+        $this->inlineJsMinifier = $minifier === null ? null : Closure::fromCallable($minifier);
 
         return $this;
     }
@@ -1100,6 +1167,18 @@ class HtmlMin implements HtmlMinInterface
     }
 
     #[Override]
+    public function isDoMinifyInlineCss(): bool
+    {
+        return $this->doMinifyInlineCss;
+    }
+
+    #[Override]
+    public function isDoMinifyInlineJs(): bool
+    {
+        return $this->doMinifyInlineJs;
+    }
+
+    #[Override]
     public function isDoRemoveComments(): bool
     {
         return $this->doRemoveComments;
@@ -1650,6 +1729,7 @@ class HtmlMin implements HtmlMinInterface
             $inner = HtmlParser::innerHtml($element);
             if ($element->tagName === 'script' || $element->tagName === 'style') {
                 $inner = trim($inner);
+                $inner = $this->maybeMinifyInlineContent($element, $inner);
             }
             $this->protectedChildNodes[$this->protected_tags_counter] = $inner;
             $element->nodeValue = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
@@ -1694,6 +1774,86 @@ class HtmlMin implements HtmlMinInterface
         if ($didRemoveComments) {
             $dom->normalizeDocument();
         }
+    }
+
+    /**
+     * Minify the contents of an inline <style> or <script> when the
+     * matching toggle is on. JSON-LD, x-template, and other non-JS
+     * `type` values pass through untouched. A buggy bundled minifier
+     * is logged via PSR-3 and falls back to the original source so the
+     * page is never corrupted.
+     */
+    private function maybeMinifyInlineContent(DOMElement $element, string $inner): string
+    {
+        if ($inner === '') {
+            return $inner;
+        }
+
+        if ($element->tagName === 'style' && $this->doMinifyInlineCss) {
+            return $this->applyInlineMinifier($inner, 'css');
+        }
+
+        if (
+            $element->tagName === 'script'
+            && $this->doMinifyInlineJs
+            && $this->isScriptSafeForJsMinification($element)
+        ) {
+            return $this->applyInlineMinifier($inner, 'js');
+        }
+
+        return $inner;
+    }
+
+    /**
+     * @param 'css'|'js' $kind
+     */
+    private function applyInlineMinifier(string $source, string $kind): string
+    {
+        $callable = $kind === 'css' ? $this->inlineCssMinifier : $this->inlineJsMinifier;
+        if ($callable !== null) {
+            return $callable($source);
+        }
+
+        $minifier = $this->resolveBundledMinifier($kind);
+
+        try {
+            return $minifier->minify($source);
+        } catch (Throwable $e) {
+            $this->logger?->warning(
+                'Inline {kind} minifier failed; passing through original source.',
+                ['kind' => $kind, 'exception' => $e],
+            );
+
+            return $source;
+        }
+    }
+
+    /**
+     * @param 'css'|'js' $kind
+     */
+    private function resolveBundledMinifier(string $kind): InlineMinifier
+    {
+        return $kind === 'css' ? new InlineCssMinifier() : new InlineJsMinifier();
+    }
+
+    /**
+     * `type` attribute allowlist for inline JS minification. Empty or
+     * absent `type`, plus the canonical JS MIME types and `module`,
+     * are minify-safe. Anything else (JSON-LD, x-templates, custom
+     * Vue/Handlebars MIMEs) is treated as opaque data.
+     */
+    private function isScriptSafeForJsMinification(DOMElement $script): bool
+    {
+        if (!$script->hasAttribute('type')) {
+            return true;
+        }
+
+        $type = strtolower(trim($script->getAttribute('type')));
+
+        return $type === ''
+            || $type === 'text/javascript'
+            || $type === 'application/javascript'
+            || $type === 'module';
     }
 
     /**
