@@ -6,6 +6,7 @@ namespace Akankov\HtmlMinBench;
 
 use Akankov\HtmlMinBench\Adapters\AbordageAdapter;
 use Akankov\HtmlMinBench\Adapters\AkankovAdapter;
+use Akankov\HtmlMinBench\Adapters\AkankovInlineAdapter;
 use Akankov\HtmlMinBench\Adapters\MinifierAdapter;
 use Akankov\HtmlMinBench\Adapters\VokuAdapter;
 use Akankov\HtmlMinBench\Adapters\WyrihaximusAdapter;
@@ -23,6 +24,7 @@ final class AdapterRegistry
     {
         return self::$cache ??= [
             new AkankovAdapter(),
+            new AkankovInlineAdapter(),
             new VokuAdapter(),
             new WyrihaximusAdapter(),
             new ZaininnariAdapter(),

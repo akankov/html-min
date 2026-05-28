@@ -178,11 +178,12 @@ and abordage/html-min on a corpus of real-world HTML pages.
 
 | adapter                   | median ms/op | geomean ms/op | parse failures | avg gzipped ratio |
 | ------------------------- | ------------ | ------------- | -------------- | ----------------- |
-| akankov/html-min          | 2.1          | 1.9           | 0 / 11         | 90.9%             |
-| voku/html-min             | 3.0          | 3.2           | 0 / 11         | 90.9%             |
-| wyrihaximus/html-compress | 5.4          | 7.1           | 0 / 11         | **86.8%**         |
-| zaininnari/html-minifier  | 9.5          | 7.5           | 0 / 11         | 92.9%             |
-| abordage/html-min †       | **0.2**      | **0.2**       | 0 / 11         | 86.9%             |
+| akankov/html-min          | 1.9          | 1.9           | 0 / 15         | 90.7%             |
+| akankov/html-min (inline) | 2.1          | 2.5           | 0 / 15         | 87.6%             |
+| voku/html-min             | 3.3          | 3.6           | 0 / 15         | 90.7%             |
+| wyrihaximus/html-compress | 6.0          | 7.5           | 0 / 15         | **87.0%**         |
+| zaininnari/html-minifier  | 9.5          | 8.3           | 0 / 15         | 94.8%             |
+| abordage/html-min †       | **0.2**      | **0.2**       | 0 / 15         | 90.2%             |
 
 <!-- BENCH-END -->
 
