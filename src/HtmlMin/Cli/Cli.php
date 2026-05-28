@@ -19,8 +19,11 @@ final readonly class Cli
           INPUT  Path to an HTML file. If omitted, reads from stdin.
 
         Options:
-          -o, --output=PATH    Write minified HTML to PATH instead of stdout.
-          -h, --help           Show this message and exit.
+          -o, --output=PATH        Write minified HTML to PATH instead of stdout.
+              --minify-inline-css  Minify the contents of inline <style> blocks.
+              --minify-inline-js   Minify the contents of inline <script> blocks
+                                   (JSON-LD and x-template scripts pass through).
+          -h, --help               Show this message and exit.
 
         Exit codes:
           0  Success.
@@ -69,6 +72,18 @@ final readonly class Cli
                 fwrite($this->stderr, "html-min: -o requires a path; use --output=PATH\n");
 
                 return 2;
+            }
+
+            if ($arg === '--minify-inline-css') {
+                $this->minifier->doMinifyInlineCss(true);
+
+                continue;
+            }
+
+            if ($arg === '--minify-inline-js') {
+                $this->minifier->doMinifyInlineJs(true);
+
+                continue;
             }
 
             if (str_starts_with($arg, '-') && $arg !== '-') {

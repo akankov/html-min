@@ -82,12 +82,63 @@ $htmlMin = (new HtmlMin())
     ->doRemoveDeprecatedTypeFromStylesheetLink(true)
     ->doRemoveDeprecatedTypeFromStyleAndLinkTag(true)
     ->doRemoveDefaultMediaTypeFromStyleAndLinkTag(true)
-    ->doRemoveDefaultTypeFromButton(false);
+    ->doRemoveDefaultTypeFromButton(false)
+
+    // Inline CSS / JS minification (opt-in, off by default)
+    ->doMinifyInlineCss(false)           // minify the contents of inline <style> blocks
+    ->doMinifyInlineJs(false);           // minify the contents of inline <script> blocks
 
 echo $htmlMin->minify($html);
 ```
 
 Each setter returns `$this`, so you can configure and call `minify()` in one chain.
+
+## Inline CSS and JS minification
+
+By default the contents of `<style>` and `<script>` blocks round-trip untouched.
+Enable the two opt-in toggles to minify them:
+
+```php
+$htmlMin = (new HtmlMin())
+    ->doMinifyInlineCss(true)
+    ->doMinifyInlineJs(true);
+
+echo $htmlMin->minify($html);
+```
+
+The bundled minifiers are zero-dependency and conservative:
+
+- **CSS** — strips `/* … */` comments and collapses whitespace; the contents of
+  strings and `url(…)` are preserved.
+- **JS** — removes comments and collapses horizontal whitespace while preserving
+  newlines (so Automatic Semicolon Insertion is unaffected), strings, regex
+  literals, and template literals. Identifiers are never renamed.
+
+Scripts that are not JavaScript are left alone automatically: a `<script>`
+whose `type` is, for example, `application/ld+json` or `text/x-template`, and any
+`<script src="…">`, passes through unminified.
+
+### Using a different minifier
+
+For aggressive minification (identifier renaming, dead-code removal), plug in a
+third-party tool with `setInlineCssMinifier()` / `setInlineJsMinifier()`. Each
+takes any `callable(string): string`; pass `null` to restore the bundled default.
+
+```php
+use MatthiasMullie\Minify; // composer require matthiasmullie/minify
+
+$htmlMin = (new HtmlMin())
+    ->doMinifyInlineCss(true)
+    ->doMinifyInlineJs(true)
+    ->setInlineCssMinifier(static fn (string $css): string => (new Minify\CSS($css))->minify())
+    ->setInlineJsMinifier(static fn (string $js): string => (new Minify\JS($js))->minify());
+
+echo $htmlMin->minify($html);
+```
+
+If a bundled minifier throws, the original source is kept and a warning is sent
+to the PSR-3 logger (when one is set via `setLogger()`), so a minifier bug can
+never corrupt the page. User-supplied callables let their exceptions propagate.
 
 ## Extending
 

@@ -36,6 +36,10 @@ interface HtmlMinInterface
 
     public function isDoRemoveSpacesBetweenTags(): bool;
 
+    public function isDoMinifyInlineCss(): bool;
+
+    public function isDoMinifyInlineJs(): bool;
+
     public function isDoOptimizeViaHtmlDomParser(): bool;
 
     public function isDoOptimizeAttributes(): bool;

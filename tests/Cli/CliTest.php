@@ -101,6 +101,40 @@ final class CliTest extends TestCase
         self::assertNotSame('', self::read($stderr));
     }
 
+    public function testMinifyInlineCssFlagStripsStyleComments(): void
+    {
+        $stdin  = self::stream('<style>a { /* hi */ color: red; }</style>');
+        $stdout = fopen('php://memory', 'r+');
+        $stderr = fopen('php://memory', 'r+');
+        self::assertNotFalse($stdout);
+        self::assertNotFalse($stderr);
+
+        $cli  = new Cli(new HtmlMin(), $stdin, $stdout, $stderr);
+        $exit = $cli->run(['html-min', '--minify-inline-css']);
+
+        self::assertSame(0, $exit);
+        $out = self::read($stdout);
+        self::assertStringContainsString('<style>a{color:red}</style>', $out);
+        self::assertStringNotContainsString('/* hi */', $out);
+    }
+
+    public function testMinifyInlineJsFlagStripsScriptComments(): void
+    {
+        $stdin  = self::stream('<script>// hi' . "\n" . 'let x = 1;</script>');
+        $stdout = fopen('php://memory', 'r+');
+        $stderr = fopen('php://memory', 'r+');
+        self::assertNotFalse($stdout);
+        self::assertNotFalse($stderr);
+
+        $cli  = new Cli(new HtmlMin(), $stdin, $stdout, $stderr);
+        $exit = $cli->run(['html-min', '--minify-inline-js']);
+
+        self::assertSame(0, $exit);
+        $out = self::read($stdout);
+        self::assertStringNotContainsString('// hi', $out);
+        self::assertStringContainsString('let x = 1;', $out);
+    }
+
     public function testUnknownFlagExitsTwoAndWritesToStderr(): void
     {
         $stdin  = self::stream('');
