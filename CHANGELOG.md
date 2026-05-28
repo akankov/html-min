@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] — 2026-05-28
+
+Inline CSS and JS minification lands as an opt-in feature. The contents of
+inline `<style>` and `<script>` blocks — previously passed through untouched —
+can now be minified by bundled, zero-dependency, conservative minifiers, with
+pluggable backends for aggressive tools. Both toggles default to off, so
+existing output is unchanged. Released from PR
+[#17](https://github.com/akankov/html-min/pull/17).
+
 ### Added
 
 - **Inline CSS and JS minification (opt-in).** Two new toggles minify the
