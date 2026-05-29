@@ -3,12 +3,19 @@
 PHP_VERSION ?= 8.4
 PHP_IMAGE   := php:$(PHP_VERSION)-cli
 PHAN_IMAGE  := html-min-phan:$(PHP_VERSION)
+COV_IMAGE   := html-min-coverage:$(PHP_VERSION)
 DOCKER_RUN  := docker run --rm -v "$(CURDIR)":/app -w /app
 PHP         := $(DOCKER_RUN) $(PHP_IMAGE) php
 PHP_PHAN    := $(DOCKER_RUN) $(PHAN_IMAGE) php
+PHP_COV     := $(DOCKER_RUN) $(COV_IMAGE) php -d pcov.enabled=1 -d memory_limit=1G
 COMPOSER    := $(DOCKER_RUN) composer:2 composer
 
-.PHONY: help install update outdated test test-all phpstan phan phan-image cs cs-check rector rector-check md md-check bench-install bench bench-quick bench-baseline bench-cs bench-cs-check bench-rector bench-rector-check bench-phpstan bench-test bench-quality quality ci clean
+# Coverage / mutation thresholds (CI floors; ratchet up as tests harden).
+MIN_LINE_COVERAGE := 90
+MIN_MSI           := 70
+MIN_COVERED_MSI   := 70
+
+.PHONY: help install update outdated test test-all phpstan phan phan-image coverage-image coverage infection cs cs-check rector rector-check md md-check bench-install bench bench-quick bench-baseline bench-cs bench-cs-check bench-rector bench-rector-check bench-phpstan bench-test bench-quality quality ci clean
 
 BENCH_GIT_SHA   := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BENCH_GIT_DIRTY := $(shell git diff-index --quiet HEAD -- 2>/dev/null && echo clean || echo dirty)
@@ -46,6 +53,16 @@ phan-image: ## Build docker image with ext-ast for phan
 
 phan: phan-image ## Run phan static analyzer
 	$(PHP_PHAN) vendor/bin/phan --no-progress-bar
+
+coverage-image: ## Build docker image with pcov for coverage / mutation testing
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $(COV_IMAGE) -f docker/coverage.Dockerfile docker
+
+coverage: coverage-image ## Run phpunit with line coverage and enforce the floor
+	$(PHP_COV) vendor/bin/phpunit --coverage-clover build/coverage/clover.xml --coverage-text --only-summary-for-coverage-text
+	$(PHP_COV) bin/coverage-check.php build/coverage/clover.xml $(MIN_LINE_COVERAGE)
+
+infection: coverage-image ## Run mutation testing and enforce the MSI floor
+	$(PHP_COV) vendor/bin/infection --threads=max --no-progress --min-msi=$(MIN_MSI) --min-covered-msi=$(MIN_COVERED_MSI)
 
 cs: ## Fix code style
 	$(PHP) vendor/bin/php-cs-fixer fix
@@ -110,7 +127,7 @@ bench-quality: bench-rector bench-cs bench-phpstan ## Run all quality tools on b
 
 quality: rector cs phpstan phan bench-quality md-check ## Run all quality tools (library + benchmarks)
 
-ci: md-check cs-check phpstan phan rector-check bench-phpstan bench-rector-check bench-test test-all ## Run the full CI pipeline locally
+ci: md-check cs-check phpstan phan rector-check bench-phpstan bench-rector-check bench-test test-all coverage infection ## Run the full CI pipeline locally
 
 clean: ## Remove vendor and cache directories
 	rm -rf vendor .phpstan.cache .phpunit.cache .php-cs-fixer.cache .phan/cache

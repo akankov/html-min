@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **CI now measures test effectiveness.** Added a coverage gate (line coverage
+  floor, enforced via `bin/coverage-check.php`) and mutation testing with
+  Infection (MSI floor). Both run in `make ci` and a new CI job, backed by a
+  pcov Docker image (`docker/coverage.Dockerfile`). Dev-only — no change to the
+  published package or its runtime dependencies.
+
 ## [2.6.1] — 2026-05-29
 
 Bug-fix release hardening the v2.6.0 bundled inline minifiers against three
