@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Infection (MSI floor). Both run in `make ci` and a new CI job, backed by a
   pcov Docker image (`docker/coverage.Dockerfile`). Dev-only — no change to the
   published package or its runtime dependencies.
+- **Hardened the inline-minifier test assertions.** Added boundary-exact
+  characterization tests for the CSS/JS scanners (comment separation, `url(`
+  lookahead, regex-vs-division at each character boundary, template
+  interpolation), killing previously-surviving mutants and raising the MSI
+  floor to 72%. Test-only — no runtime behaviour change.
 
 ## [2.6.1] — 2026-05-29
 
