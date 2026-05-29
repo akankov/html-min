@@ -6,6 +6,9 @@ composer.lock
 build/
 .phpunit.result.cache
 
+# infection drops a 0-byte tempnam('min…') file in CWD on each run
+/min*
+
 # phar build output
 dist/
 

@@ -61,6 +61,16 @@ cases, prefer fixtures in `tests/fixtures/` named `<name>.html` and
 Keep tests compatible with PHP 8.3. The Composer platform and Rector config are
 pinned to PHP 8.3 even when local checks also run newer versions.
 
+### Coverage and mutation testing
+
+`make coverage` runs the suite with line coverage and fails below a 90% floor.
+`make infection` runs mutation testing and fails below a 70% MSI floor — it
+catches assertions too weak to notice a behavior change, which line coverage
+cannot. Both use a pcov Docker image (`docker/coverage.Dockerfile`) and are part
+of `make ci`. When you raise the bar, bump the floors in the `Makefile`
+(`MIN_LINE_COVERAGE` / `MIN_MSI` / `MIN_COVERED_MSI`) and `.github/workflows/ci.yml`
+together.
+
 ## Benchmarks
 
 Benchmark code lives in the separate Composer project under `benchmarks/`. Run

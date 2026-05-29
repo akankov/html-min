@@ -102,6 +102,40 @@ jobs:
       - name: Run Phan
         run: vendor/bin/phan --no-progress-bar
 
+  coverage:
+    name: Coverage & mutation testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          coverage: pcov
+          extensions: dom, libxml, mbstring
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-8.4-${{ hashFiles('composer.json') }}
+          restore-keys: composer-8.4-
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      # Floors mirror the Makefile (MIN_LINE_COVERAGE / MIN_MSI / MIN_COVERED_MSI).
+      - name: Line coverage floor
+        run: |
+          vendor/bin/phpunit --coverage-clover build/coverage/clover.xml --coverage-text --only-summary-for-coverage-text
+          php bin/coverage-check.php build/coverage/clover.xml 90
+
+      - name: Mutation testing floor
+        run: vendor/bin/infection --threads=max --no-progress --min-msi=70 --min-covered-msi=70
+
   rector-check:
     name: Rector dry-run
     runs-on: ubuntu-latest
