@@ -21,7 +21,13 @@ use Override;
  * interpolations) are emitted verbatim. The regex-vs-division heuristic
  * inspects the previous significant token: after a regex-context keyword
  * (`return`, `typeof`, `throw`, etc.) or after an operator/punctuator
- * the `/` is a regex; after an identifier or `)`/`]` it is division.
+ * the `/` is a regex; after an identifier, `)`/`]`, or a postfix `++`/`--`
+ * it is division.
+ *
+ * Known limitation: a regex literal whose body contains an unbalanced brace
+ * *inside* a template interpolation (e.g. ``${ /}/.test(x) }``) can still
+ * confuse the interpolation-depth count — strings and nested templates are
+ * skipped there, but regex literals are not. This needs a fuller tokenizer.
  *
  * For aggressive minification (identifier renaming, ASI-aware joining),
  * wire {@see \Akankov\HtmlMin\HtmlMin::setInlineJsMinifier()} to a third-
@@ -50,6 +56,7 @@ final class InlineJsMinifier implements InlineMinifier
         $pendingNl = false;
         $pendingSp = false;
         $lastChar = '';
+        $prevChar = '';
         $lastIdent = '';
 
         while ($i < $len) {
@@ -78,11 +85,12 @@ final class InlineJsMinifier implements InlineMinifier
                 continue;
             }
 
-            if ($c === '/' && $this->isRegexContext($lastChar, $lastIdent)) {
+            if ($c === '/' && $this->isRegexContext($lastChar, $prevChar, $lastIdent)) {
                 $this->flush($out, $pendingNl, $pendingSp);
                 $endIdx = $this->scanRegex($source, $i, $len);
                 $out .= substr($source, $i, $endIdx - $i);
                 $lastChar = '/';
+                $prevChar = '';
                 $lastIdent = '';
                 $i = $endIdx;
                 continue;
@@ -93,6 +101,7 @@ final class InlineJsMinifier implements InlineMinifier
                 $endIdx = $this->scanString($source, $i, $c, $len);
                 $out .= substr($source, $i, $endIdx - $i);
                 $lastChar = $c;
+                $prevChar = '';
                 $lastIdent = '';
                 $i = $endIdx;
                 continue;
@@ -103,6 +112,7 @@ final class InlineJsMinifier implements InlineMinifier
                 $endIdx = $this->scanTemplate($source, $i, $len);
                 $out .= substr($source, $i, $endIdx - $i);
                 $lastChar = '`';
+                $prevChar = '';
                 $lastIdent = '';
                 $i = $endIdx;
                 continue;
@@ -140,6 +150,7 @@ final class InlineJsMinifier implements InlineMinifier
                 $ident = substr($source, $i, $j - $i);
                 $out .= $ident;
                 $lastChar = $ident[\strlen($ident) - 1];
+                $prevChar = '';
                 $lastIdent = $ident;
                 $i = $j;
                 continue;
@@ -147,6 +158,7 @@ final class InlineJsMinifier implements InlineMinifier
 
             $this->flush($out, $pendingNl, $pendingSp);
             $out .= $c;
+            $prevChar = $lastChar;
             $lastChar = $c;
             $lastIdent = '';
             $i++;
@@ -189,7 +201,7 @@ final class InlineJsMinifier implements InlineMinifier
         return $this->isIdentStart($c) || ($c >= '0' && $c <= '9');
     }
 
-    private function isRegexContext(string $lastChar, string $lastIdent): bool
+    private function isRegexContext(string $lastChar, string $prevChar, string $lastIdent): bool
     {
         if ($lastIdent !== '') {
             return \in_array($lastIdent, self::REGEX_CONTEXT_KEYWORDS, true);
@@ -201,6 +213,11 @@ final class InlineJsMinifier implements InlineMinifier
             return false;
         }
         if ($lastChar === ')' || $lastChar === ']') {
+            return false;
+        }
+        // Postfix `++`/`--` ends an expression, so a following `/` is division.
+        // (`a + /re/` is still a regex; only the doubled operator flips it.)
+        if (($lastChar === '+' && $prevChar === '+') || ($lastChar === '-' && $prevChar === '-')) {
             return false;
         }
 
@@ -277,12 +294,26 @@ final class InlineJsMinifier implements InlineMinifier
                     $i += 2;
                     continue;
                 }
-            } else {
-                if ($c === '{') {
-                    $depth++;
-                } elseif ($c === '}') {
-                    $depth--;
-                }
+                $i++;
+                continue;
+            }
+
+            // Inside a `${ … }` interpolation: skip string and nested-template
+            // contents so a brace inside them (e.g. `${ obj["}"] }`) doesn't
+            // throw off the interpolation-depth count and make the scanner miss
+            // the closing backtick.
+            if ($c === '"' || $c === "'") {
+                $i = $this->scanString($source, $i, $c, $len);
+                continue;
+            }
+            if ($c === '`') {
+                $i = $this->scanTemplate($source, $i, $len);
+                continue;
+            }
+            if ($c === '{') {
+                $depth++;
+            } elseif ($c === '}') {
+                $depth--;
             }
             $i++;
         }

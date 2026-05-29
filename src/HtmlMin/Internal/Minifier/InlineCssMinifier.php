@@ -38,6 +38,7 @@ final class InlineCssMinifier implements InlineMinifier
         $i = 0;
         $out = '';
         $pendingSpace = false;
+        $pendingSemicolon = false;
 
         while ($i < $len) {
             $c = $source[$i];
@@ -51,6 +52,7 @@ final class InlineCssMinifier implements InlineMinifier
             }
 
             if ($c === '"' || $c === "'") {
+                $this->flushSemicolon($out, $pendingSemicolon, $c);
                 $this->emitPendingSpace($out, $pendingSpace);
                 $end = $this->scanString($source, $i, $c, $len);
                 $out .= substr($source, $i, $end - $i);
@@ -63,6 +65,7 @@ final class InlineCssMinifier implements InlineMinifier
                 && ($source[$i] === 'u' || $source[$i] === 'U')
                 && strcasecmp(substr($source, $i, 4), 'url(') === 0
             ) {
+                $this->flushSemicolon($out, $pendingSemicolon, $c);
                 $this->emitPendingSpace($out, $pendingSpace);
                 $end = $this->scanUrl($source, $i, $len);
                 $out .= substr($source, $i, $end - $i);
@@ -77,18 +80,31 @@ final class InlineCssMinifier implements InlineMinifier
             }
 
             if (\in_array($c, self::STRUCTURAL, true)) {
+                // Defer `;`: it is only emitted once we know the next
+                // significant char is not `}`. Tracking it as state (rather
+                // than a final str_replace) keeps it from ever reaching into a
+                // verbatim string/url that happens to contain `;}`.
+                if ($c === ';') {
+                    $pendingSemicolon = true;
+                    $pendingSpace = false;
+                    $i++;
+                    continue;
+                }
+                $this->flushSemicolon($out, $pendingSemicolon, $c);
                 $pendingSpace = false;
                 $out .= $c;
                 $i++;
                 continue;
             }
 
+            $this->flushSemicolon($out, $pendingSemicolon, $c);
             $this->emitPendingSpace($out, $pendingSpace);
             $out .= $c;
             $i++;
         }
 
-        $out = str_replace(';}', '}', $out);
+        // Preserve a trailing `;` at end-of-input (no following `}` to drop it).
+        $this->flushSemicolon($out, $pendingSemicolon, '');
 
         return trim($out);
     }
@@ -105,6 +121,20 @@ final class InlineCssMinifier implements InlineMinifier
             }
         }
         $pendingSpace = false;
+    }
+
+    /**
+     * @param-out bool $pendingSemicolon
+     */
+    private function flushSemicolon(string &$out, bool &$pendingSemicolon, string $nextChar): void
+    {
+        if (!$pendingSemicolon) {
+            return;
+        }
+        $pendingSemicolon = false;
+        if ($nextChar !== '}') {
+            $out .= ';';
+        }
     }
 
     private function scanString(string $source, int $start, string $quote, int $len): int
