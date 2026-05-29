@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   right attribute on the wrong tag) that must be kept — plus the media/`type`
   CSS-default removals, pinning every rule's `tag && attr && value` conjunction.
   Raised the mutation floor to 74% MSI. Test-only — no runtime behaviour change.
+- **Coverage and mutation badges.** CI uploads line coverage to Codecov and the
+  MSI to the Stryker Mutator dashboard; the README shows both badges. Reporting
+  only — gated behind repository secrets and a no-op without them.
 
 ## [2.6.1] — 2026-05-29
 
