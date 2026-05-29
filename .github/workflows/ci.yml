@@ -134,7 +134,7 @@ jobs:
           php bin/coverage-check.php build/coverage/clover.xml 90
 
       - name: Mutation testing floor
-        run: vendor/bin/infection --threads=max --no-progress --min-msi=72 --min-covered-msi=72
+        run: vendor/bin/infection --threads=max --no-progress --min-msi=74 --min-covered-msi=74
 
   rector-check:
     name: Rector dry-run

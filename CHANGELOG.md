@@ -17,8 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Hardened the inline-minifier test assertions.** Added boundary-exact
   characterization tests for the CSS/JS scanners (comment separation, `url(`
   lookahead, regex-vs-division at each character boundary, template
-  interpolation), killing previously-surviving mutants and raising the MSI
-  floor to 72%. Test-only — no runtime behaviour change.
+  interpolation). Test-only — no runtime behaviour change.
+- **Hardened the attribute-removal test assertions.** Added the negative
+  complement of the default-attribute rules — near-misses (wrong value, or the
+  right attribute on the wrong tag) that must be kept — plus the media/`type`
+  CSS-default removals, pinning every rule's `tag && attr && value` conjunction.
+  Raised the mutation floor to 74% MSI. Test-only — no runtime behaviour change.
 
 ## [2.6.1] — 2026-05-29
 

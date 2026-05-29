@@ -12,8 +12,8 @@ COMPOSER    := $(DOCKER_RUN) composer:2 composer
 
 # Coverage / mutation thresholds (CI floors; ratchet up as tests harden).
 MIN_LINE_COVERAGE := 90
-MIN_MSI           := 72
-MIN_COVERED_MSI   := 72
+MIN_MSI           := 74
+MIN_COVERED_MSI   := 74
 
 .PHONY: help install update outdated test test-all phpstan phan phan-image coverage-image coverage infection cs cs-check rector rector-check md md-check bench-install bench bench-quick bench-baseline bench-cs bench-cs-check bench-rector bench-rector-check bench-phpstan bench-test bench-quality quality ci clean
 
