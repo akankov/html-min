@@ -9,6 +9,9 @@ build/
 # phar build output
 dist/
 
+# benchmark baseline snapshot (release-scoped, written by `make bench-baseline`)
+baseline.md
+
 .php-cs-fixer.cache
 .phpstan.cache
 .phpunit.cache

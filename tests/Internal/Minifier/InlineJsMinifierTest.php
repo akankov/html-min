@@ -91,6 +91,37 @@ final class InlineJsMinifierTest extends TestCase
         );
     }
 
+    public function testPostfixIncrementBeforeDivisionIsNotRegex(): void
+    {
+        // After a postfix `++`/`--`, `/` is division, not the start of a regex
+        // literal. Misreading it as a regex swallows the rest of the line
+        // verbatim, so the run of whitespace around `/` would not collapse.
+        self::assertSame(
+            'let x = a++ / b;',
+            (new InlineJsMinifier())->minify('let x = a++ /  b;'),
+        );
+    }
+
+    public function testPostfixDecrementBeforeDivisionIsNotRegex(): void
+    {
+        self::assertSame(
+            'let x = a-- / b;',
+            (new InlineJsMinifier())->minify('let x = a-- /  b;'),
+        );
+    }
+
+    public function testTemplateInterpolationWithBraceInStringDoesNotRunAway(): void
+    {
+        // A string inside `${…}` may contain an unbalanced brace (`"a{"`). The
+        // template scanner must skip string contents when counting interpolation
+        // braces, otherwise it misses the closing backtick and runs past the
+        // template, swallowing the trailing code verbatim (no space collapse).
+        self::assertSame(
+            'let s = `${"a{"}`; let y = 1;',
+            (new InlineJsMinifier())->minify('let s = `${"a{"}`;  let  y = 1;'),
+        );
+    }
+
     public function testTemplateLiteralIsPreservedVerbatim(): void
     {
         self::assertSame(

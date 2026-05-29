@@ -36,6 +36,17 @@ final class InlineCssMinifierTest extends TestCase
         );
     }
 
+    public function testTrailingSemicolonRemovalDoesNotCorruptStrings(): void
+    {
+        // The `;}` trailing-semicolon optimisation must not reach inside a
+        // verbatim-preserved string. `content:"x;}y"` contains a literal `;}`
+        // that has to survive unchanged.
+        self::assertSame(
+            'a::before{content:"x;}y"}',
+            (new InlineCssMinifier())->minify('a::before { content: "x;}y"; }'),
+        );
+    }
+
     public function testWhitespaceAroundSelectorsAndDeclarationsCollapses(): void
     {
         self::assertSame(

@@ -32,6 +32,18 @@ final class HtmlMinInlineMinificationTest extends TestCase
         self::assertStringNotContainsString('/* danger */', $out);
     }
 
+    public function testInlineCssStringWithBraceSurvivesFullPipeline(): void
+    {
+        // Regression: a literal `;}` inside a CSS string must survive the
+        // trailing-semicolon optimisation, end-to-end through protectTags()
+        // and the placeholder-restore round-trip.
+        $html = '<style>a::before { content: "x;}y"; }</style>';
+
+        $out = (new HtmlMin())->doMinifyInlineCss(true)->minify($html);
+
+        self::assertStringContainsString('<style>a::before{content:"x;}y"}</style>', $out);
+    }
+
     public function testInlineJsIsLeftAloneByDefault(): void
     {
         $html = '<script>// keep' . "\n" . 'let x = 1;</script>';

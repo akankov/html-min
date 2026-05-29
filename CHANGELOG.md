@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.1] — 2026-05-29
+
+Bug-fix release hardening the v2.6.0 bundled inline minifiers against three
+edge cases that could corrupt output. All three are narrow but real; the
+default-off toggles mean only opted-in callers were affected.
+
+### Fixed
+
+- **Inline CSS: a literal `;}` inside a string is no longer mangled.** The
+  trailing-semicolon optimisation ran as a blanket `str_replace(';}', '}')`
+  over the whole output, reaching into verbatim-preserved strings — e.g.
+  `content:"x;}y"` became `content:"x}y"`. The `;` is now deferred and dropped
+  only when it is genuinely structural (immediately before `}`).
+- **Inline JS: `/` after a postfix `++`/`--` is treated as division, not a
+  regex.** `a++ / b` was scanned as a regex literal, swallowing the rest of the
+  line and suppressing whitespace collapse. `a + /re/` remains a regex.
+- **Inline JS: braces inside strings/nested templates within a `${…}`
+  interpolation no longer break template scanning.** A construct like
+  `` `${ obj["}"] }` `` previously miscounted interpolation depth, missed the
+  closing backtick, and ran past the template. Strings and nested templates are
+  now skipped while counting interpolation braces.
+
 ## [2.6.0] — 2026-05-28
 
 Inline CSS and JS minification lands as an opt-in feature. The contents of
