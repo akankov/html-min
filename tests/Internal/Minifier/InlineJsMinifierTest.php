@@ -216,4 +216,90 @@ final class InlineJsMinifierTest extends TestCase
     {
         self::assertSame($expected, (new InlineJsMinifier())->minify($input));
     }
+
+    /**
+     * Boundary behaviours of the regex-vs-division heuristic and the
+     * string/regex/template scanners. Each case pins an edge the happy-path
+     * tests leave unasserted; the doubled space around `/` is the tell — it
+     * only collapses when `/` is correctly read as division (a mis-scanned
+     * regex would emit the run verbatim).
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideScannerEdgesCases(): iterable
+    {
+        // `/` after `)`, `]`, or a digit is division, not a regex.
+        yield 'division after closing paren' => [
+            'let n = (a + b) /  c;',
+            'let n = (a + b) / c;',
+        ];
+        yield 'division after index bracket' => [
+            'let n = arr[0] /  c;',
+            'let n = arr[0] / c;',
+        ];
+        yield 'division after numeric literal' => [
+            'let n = 1 /  c;',
+            'let n = 1 / c;',
+        ];
+
+        // `/` after a regex-context keyword IS a regex; its inner space survives.
+        yield 'regex after return keyword' => [
+            'function f(){return /a b/.test(x);}',
+            'function f(){return /a b/.test(x);}',
+        ];
+
+        // A `/` inside a regex character class is literal — the regex ends only
+        // at the `/` after the closing `]`.
+        yield 'regex with slash inside character class' => [
+            'let r = /[/ ]/g;',
+            'let r = /[/ ]/g;',
+        ];
+
+        // An escaped backtick does not end the template; its content (including
+        // the whitespace run) is emitted verbatim.
+        yield 'escaped backtick inside template' => [
+            'let s = `a\`b   c`;',
+            'let s = `a\`b   c`;',
+        ];
+
+        // A nested template inside `${ … }` is scanned recursively, so its
+        // content survives verbatim and its braces don't end the outer one early.
+        yield 'nested template literal' => [
+            'let s = `${`x   y`}`;',
+            'let s = `${`x   y`}`;',
+        ];
+    }
+
+    #[DataProvider('provideScannerEdgesCases')]
+    public function testScannerEdges(string $input, string $expected): void
+    {
+        self::assertSame($expected, (new InlineJsMinifier())->minify($input));
+    }
+
+    /**
+     * The token preceding `/` is classified by exact character-range checks
+     * (`>= '0' && <= '9'` for numerics; `>= 'a' && <= 'z'` etc. for identifier
+     * starts). These cases sit a single token *on each boundary* — `0`, `9`,
+     * `a`, `z`, `A`, `Z`, `_`, `$` — so an off-by-one in a comparison flips the
+     * `/` to a regex and the doubled space stops collapsing.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideRegexContextCharacterBoundariesCases(): iterable
+    {
+        yield 'after digit 0' => ['let n = 0 /  b;', 'let n = 0 / b;'];
+        yield 'after digit 9' => ['let n = 9 /  b;', 'let n = 9 / b;'];
+        yield 'after ident a' => ['let r = a /  2;', 'let r = a / 2;'];
+        yield 'after ident z' => ['let r = z /  2;', 'let r = z / 2;'];
+        yield 'after ident A' => ['let r = A /  2;', 'let r = A / 2;'];
+        yield 'after ident Z' => ['let r = Z /  2;', 'let r = Z / 2;'];
+        yield 'after ident _' => ['let r = _ /  2;', 'let r = _ / 2;'];
+        yield 'after ident $' => ['let r = $ /  2;', 'let r = $ / 2;'];
+    }
+
+    #[DataProvider('provideRegexContextCharacterBoundariesCases')]
+    public function testRegexContextCharacterBoundaries(string $input, string $expected): void
+    {
+        self::assertSame($expected, (new InlineJsMinifier())->minify($input));
+    }
 }

@@ -141,4 +141,60 @@ final class InlineCssMinifierTest extends TestCase
     {
         self::assertSame($expected, (new InlineCssMinifier())->minify($input));
     }
+
+    /**
+     * Boundary behaviours of the scanner — comment handling, the `url(`
+     * lookahead, string atomicity, and the deferred `;`. Each case pins an
+     * edge that the happy-path tests leave unasserted.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideScannerEdgesCases(): iterable
+    {
+        // A comment between two values must collapse to a single separating
+        // space, never vanish — otherwise the values fuse (`0 1px` → `01px`).
+        yield 'comment between values keeps a space' => [
+            'a { margin: 0 /* gap */ 1px; }',
+            'a{margin:0 1px}',
+        ];
+        yield 'comment with no surrounding space still separates' => [
+            'a{margin:0/* */1px}',
+            'a{margin:0 1px}',
+        ];
+
+        // An unterminated comment runs to end-of-input and emits nothing more.
+        yield 'unterminated comment runs to end of input' => [
+            'a{color:red}/* oops',
+            'a{color:red}',
+        ];
+
+        // url( detection is case-insensitive and the body is emitted verbatim
+        // (inner whitespace preserved).
+        yield 'uppercase URL( is detected and preserved verbatim' => [
+            'a { background: URL( pic.png ) }',
+            'a{background:URL( pic.png )}',
+        ];
+        // A property that merely starts with `u` must NOT trip the url( branch.
+        yield 'u-prefixed property is not treated as url' => [
+            'a { unicode-bidi: embed; }',
+            'a{unicode-bidi:embed}',
+        ];
+        // A `)` inside a quoted url() argument must not end the url early.
+        yield 'paren inside quoted url survives' => [
+            'a{background:url("a)b")}',
+            'a{background:url("a)b")}',
+        ];
+
+        // A redundant `;` collapses; the trailing one before `}` is dropped.
+        yield 'double semicolon collapses' => [
+            'a { color: red;; }',
+            'a{color:red}',
+        ];
+    }
+
+    #[DataProvider('provideScannerEdgesCases')]
+    public function testScannerEdges(string $input, string $expected): void
+    {
+        self::assertSame($expected, (new InlineCssMinifier())->minify($input));
+    }
 }
