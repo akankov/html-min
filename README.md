@@ -1,4 +1,6 @@
 [![CI](https://github.com/akankov/html-min/actions/workflows/ci.yml/badge.svg)](https://github.com/akankov/html-min/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/akankov/html-min/branch/master/graph/badge.svg)](https://codecov.io/gh/akankov/html-min)
+[![Mutation testing badge](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Fgithub.com%2Fakankov%2Fhtml-min%2Fmaster)](https://dashboard.stryker-mutator.io/reports/github.com/akankov/html-min/master)
 [![Latest Stable Version](http://poser.pugx.org/akankov/html-min/v)](https://packagist.org/packages/akankov/html-min)
 [![Monthly Downloads](http://poser.pugx.org/akankov/html-min/d/monthly)](https://packagist.org/packages/akankov/html-min)
 [![Dependents](http://poser.pugx.org/akankov/html-min/dependents)](https://packagist.org/packages/akankov/html-min)
