@@ -419,4 +419,99 @@ final class HtmlMinAttributeTest extends TestCase
         $htmlMin->doRemoveDefaultAttributes(true);
         self::assertSame($expected, $htmlMin->minify($input));
     }
+
+    /**
+     * The negative complement of {@see provideDefaultAttributesAreRemovedCases}:
+     * each case is a near-miss (right tag + right attribute, NON-default value)
+     * that must be KEPT. These pin the conjunction in every removal rule — a
+     * rule that fired on the wrong value (e.g. `&&` weakened to `||`) would
+     * wrongly strip the attribute here.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideDefaultAttributesAreKeptForNonDefaultValuesCases(): iterable
+    {
+        return [
+            'script language not javascript' => ['<script language="vbscript">var a=1;</script>', '<script language=vbscript>var a=1;</script>'],
+            'form method not get'            => ['<form method="post"><input name="x"></form>', '<form method=post><input name=x></form>'],
+            'form autocomplete not on'       => ['<form autocomplete="off"><input name="x"></form>', '<form autocomplete=off><input name=x></form>'],
+            'form enctype not default'       => ['<form enctype="multipart/form-data"><input name="x"></form>', '<form enctype=multipart/form-data><input name=x></form>'],
+            'input type not text'            => ['<form><input type="checkbox" name="x"></form>', '<form><input name=x type=checkbox></form>'],
+            'textarea wrap not soft'         => ['<form><textarea wrap="hard" name="x">y</textarea></form>', '<form><textarea name=x wrap=hard>y</textarea></form>'],
+            'area shape not rect'            => ['<map name="m"><area shape="circle" coords="1,2,3"></map>', '<map name=m><area coords=1,2,3 shape=circle></map>'],
+            'th scope not auto'              => ['<table><tr><th scope="col">h</th></tr></table>', '<table><tr><th scope=col>h</table>'],
+            'ol type not decimal'            => ['<ol type="1"><li>x</li></ol>', '<ol type=1><li>x</ol>'],
+            'ol start not 1'                 => ['<ol start="2"><li>x</li></ol>', '<ol start=2><li>x</ol>'],
+            'track kind not subtitles'       => ['<video><track kind="captions" src="x.vtt"></video>', '<video><track kind=captions src=x.vtt></video>'],
+            'spellcheck not default'         => ['<div spellcheck="true">x</div>', '<div spellcheck=true>x</div>'],
+            'draggable not auto'             => ['<div draggable="true">x</div>', '<div draggable=true>x</div>'],
+        ];
+    }
+
+    #[DataProvider('provideDefaultAttributesAreKeptForNonDefaultValuesCases')]
+    public function testDefaultAttributesAreKeptForNonDefaultValues(string $input, string $expected): void
+    {
+        $htmlMin = new HtmlMin();
+        $htmlMin->doRemoveDefaultAttributes(true);
+        self::assertSame($expected, $htmlMin->minify($input));
+    }
+
+    /**
+     * The other half of each rule's conjunction: the correct attribute name and
+     * default value, but on the WRONG tag, must be KEPT. A rule whose tag check
+     * was weakened (`tag && attr` → `tag || attr`) would wrongly strip these.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideDefaultAttributesAreKeptOnOtherTagsCases(): iterable
+    {
+        return [
+            'language not on script'  => ['<div language="javascript">x</div>', '<div language=javascript>x</div>'],
+            'method not on form'      => ['<div method="get">x</div>', '<div method=get>x</div>'],
+            'autocomplete not on form' => ['<div autocomplete="on">x</div>', '<div autocomplete=on>x</div>'],
+            'enctype not on form'     => ['<div enctype="application/x-www-form-urlencoded">x</div>', '<div enctype=application/x-www-form-urlencoded>x</div>'],
+            'type=text not on input'  => ['<span type="text">x</span>', '<span type=text>x</span>'],
+            'wrap not on textarea'    => ['<div wrap="soft">x</div>', '<div wrap=soft>x</div>'],
+            'shape not on area'       => ['<div shape="rect">x</div>', '<div shape=rect>x</div>'],
+            'scope not on th'         => ['<div scope="auto">x</div>', '<div scope=auto>x</div>'],
+            'type=decimal not on ol'  => ['<div type="decimal">x</div>', '<div type=decimal>x</div>'],
+            'start not on ol'         => ['<div start="1">x</div>', '<div start=1>x</div>'],
+            'kind not on track'       => ['<div kind="subtitles">x</div>', '<div kind=subtitles>x</div>'],
+        ];
+    }
+
+    #[DataProvider('provideDefaultAttributesAreKeptOnOtherTagsCases')]
+    public function testDefaultAttributesAreKeptOnOtherTags(string $input, string $expected): void
+    {
+        $htmlMin = new HtmlMin();
+        $htmlMin->doRemoveDefaultAttributes(true);
+        self::assertSame($expected, $htmlMin->minify($input));
+    }
+
+    /**
+     * `media="all"` and `type="text/css"` are the defaults for `<link>`/`<style>`
+     * and are stripped (on by default). Each rule needs both halves asserted:
+     * it fires on the default value, but is kept for other values and on other
+     * tags — pinning the `(link || style) && attr && value` conjunction.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideMediaAndCssTypeDefaultRemovalCases(): iterable
+    {
+        return [
+            'link media=all removed'        => ['<link media="all" href="a.css" rel="stylesheet">', '<link href=a.css rel=stylesheet>'],
+            'style media=all removed'       => ['<style media="all">a{}</style>', '<style>a{}</style>'],
+            'link media=screen kept'        => ['<link media="screen" href="a.css" rel="stylesheet">', '<link href=a.css media=screen rel=stylesheet>'],
+            'media on non-link/style kept'  => ['<div media="all">x</div>', '<div media=all>x</div>'],
+            'link type=text/css removed'    => ['<link type="text/css" href="a.css" rel="stylesheet">', '<link href=a.css rel=stylesheet>'],
+            'style type=text/css removed'   => ['<style type="text/css">a{}</style>', '<style>a{}</style>'],
+            'link type non-css kept'        => ['<link type="text/plain" href="a.css" rel="stylesheet">', '<link href=a.css rel=stylesheet type=text/plain>'],
+        ];
+    }
+
+    #[DataProvider('provideMediaAndCssTypeDefaultRemovalCases')]
+    public function testMediaAndCssTypeDefaultRemoval(string $input, string $expected): void
+    {
+        self::assertSame($expected, (new HtmlMin())->minify($input));
+    }
 }
