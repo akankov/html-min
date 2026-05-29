@@ -144,7 +144,7 @@ jobs:
       - name: Mutation testing floor
         # STRYKER_DASHBOARD_API_KEY (when set, on master) publishes the MSI to the
         # Stryker dashboard for the README badge; absent on forks/PRs — a no-op.
-        run: vendor/bin/infection --threads=max --no-progress --min-msi=74 --min-covered-msi=74
+        run: vendor/bin/infection --threads=max --no-progress --min-msi=72 --min-covered-msi=72
         env:
           STRYKER_DASHBOARD_API_KEY: ${{ secrets.STRYKER_DASHBOARD_API_KEY }}
 

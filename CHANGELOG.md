@@ -22,7 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   complement of the default-attribute rules — near-misses (wrong value, or the
   right attribute on the wrong tag) that must be kept — plus the media/`type`
   CSS-default removals, pinning every rule's `tag && attr && value` conjunction.
-  Raised the mutation floor to 74% MSI. Test-only — no runtime behaviour change.
+  Test-only — no runtime behaviour change.
+- **Data-driven default-attribute removals.** Replaced the 13 repetitive
+  `if ($tag === … && $attrName === … && $attrValue === …)` blocks in
+  `OptimizeAttributes` with two declarative lookup tables. Behaviour is
+  identical (guarded by the rule matrix above); ~50 lines of branching become a
+  table plus two lookups. The mutation floor moves to 72% MSI — collapsing the
+  if-chain removes ~90 thoroughly-killed mutants, which mechanically lowers the
+  score even though the code is simpler. Internal — no public surface change.
 - **Coverage and mutation badges.** CI uploads line coverage to Codecov and the
   MSI to the Stryker Mutator dashboard; the README shows both badges. Reporting
   only — gated behind repository secrets and a no-op without them.
