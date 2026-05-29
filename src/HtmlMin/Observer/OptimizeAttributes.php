@@ -44,6 +44,39 @@ final class OptimizeAttributes implements DomObserver
     ];
 
     /**
+     * Attributes dropped when their value equals the element default, keyed by
+     * tag then attribute name. Consulted by {@see removeAttributeHelper()} when
+     * doRemoveDefaultAttributes() is on.
+     *
+     * @var array<string, array<string, string>>
+     */
+    private const array DEFAULT_ATTRIBUTE_REMOVALS = [
+        'script'   => ['language' => 'javascript'],
+        'form'     => [
+            'method'       => 'get',
+            'autocomplete' => 'on',
+            'enctype'      => 'application/x-www-form-urlencoded',
+        ],
+        'input'    => ['type' => 'text'],
+        'textarea' => ['wrap' => 'soft'],
+        'area'     => ['shape' => 'rect'],
+        'th'       => ['scope' => 'auto'],
+        'ol'       => ['type' => 'decimal', 'start' => '1'],
+        'track'    => ['kind' => 'subtitles'],
+    ];
+
+    /**
+     * Default-value attribute removals that apply to any element (no tag
+     * restriction), keyed by attribute name.
+     *
+     * @var array<string, string>
+     */
+    private const array DEFAULT_ATTRIBUTE_REMOVALS_ANY_TAG = [
+        'spellcheck' => 'default',
+        'draggable'  => 'auto',
+    ];
+
+    /**
      * Receive dom elements before the minification.
      *
      * @phan-suppress PhanUnusedPublicFinalMethodParameter
@@ -228,57 +261,13 @@ final class OptimizeAttributes implements DomObserver
      */
     private function removeAttributeHelper(string $tag, string $attrName, string $attrValue, array $allAttr, HtmlMinInterface $htmlMin): bool
     {
-        // remove defaults
+        // remove defaults — table-driven; see DEFAULT_ATTRIBUTE_REMOVALS(_ANY_TAG)
         if ($htmlMin->isDoRemoveDefaultAttributes()) {
-            if ($tag === 'script' && $attrName === 'language' && $attrValue === 'javascript') {
+            if ((self::DEFAULT_ATTRIBUTE_REMOVALS[$tag][$attrName] ?? null) === $attrValue) {
                 return true;
             }
 
-            if ($tag === 'form' && $attrName === 'method' && $attrValue === 'get') {
-                return true;
-            }
-
-            if ($tag === 'form' && $attrName === 'autocomplete' && $attrValue === 'on') {
-                return true;
-            }
-
-            if ($tag === 'form' && $attrName === 'enctype' && $attrValue === 'application/x-www-form-urlencoded') {
-                return true;
-            }
-
-            if ($tag === 'input' && $attrName === 'type' && $attrValue === 'text') {
-                return true;
-            }
-
-            if ($tag === 'textarea' && $attrName === 'wrap' && $attrValue === 'soft') {
-                return true;
-            }
-
-            if ($tag === 'area' && $attrName === 'shape' && $attrValue === 'rect') {
-                return true;
-            }
-
-            if ($tag === 'th' && $attrName === 'scope' && $attrValue === 'auto') {
-                return true;
-            }
-
-            if ($tag === 'ol' && $attrName === 'type' && $attrValue === 'decimal') {
-                return true;
-            }
-
-            if ($tag === 'ol' && $attrName === 'start' && $attrValue === '1') {
-                return true;
-            }
-
-            if ($tag === 'track' && $attrName === 'kind' && $attrValue === 'subtitles') {
-                return true;
-            }
-
-            if ($attrName === 'spellcheck' && $attrValue === 'default') {
-                return true;
-            }
-
-            if ($attrName === 'draggable' && $attrValue === 'auto') {
+            if ((self::DEFAULT_ATTRIBUTE_REMOVALS_ANY_TAG[$attrName] ?? null) === $attrValue) {
                 return true;
             }
         }
