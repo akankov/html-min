@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **CLI input reading simplified.** `Cli::readInput()` now relies on a single
+  `@file_get_contents()` (which already reports missing / unreadable / directory
+  paths via `false`) instead of a redundant `is_file()`/`is_readable()`
+  pre-check. Behaviour is unchanged — same stderr message and exit code 1 on
+  failure. Raw PHP warnings on I/O failure are suppressed (the clean stderr line
+  is the signal).
+
 ## [2.7.0] — 2026-05-30
 
 Extensibility and internal-architecture release. Every library class is now open

@@ -150,6 +150,43 @@ final class CliTest extends TestCase
         self::assertStringContainsString('--bogus-flag', self::read($stderr));
     }
 
+    public function testBareDashOFlagExitsTwoAndWritesToStderr(): void
+    {
+        $stderr = fopen('php://memory', 'r+');
+        self::assertNotFalse($stderr);
+
+        $cli  = new Cli(new HtmlMin(), self::stream(''), self::stream(''), $stderr);
+        $exit = $cli->run(['html-min', '-o']);
+
+        self::assertSame(2, $exit);
+        self::assertStringContainsString('-o requires a path', self::read($stderr));
+    }
+
+    public function testSecondInputPathExitsTwoAndWritesToStderr(): void
+    {
+        $stderr = fopen('php://memory', 'r+');
+        self::assertNotFalse($stderr);
+
+        $cli  = new Cli(new HtmlMin(), self::stream(''), self::stream(''), $stderr);
+        $exit = $cli->run(['html-min', 'a.html', 'b.html']);
+
+        self::assertSame(2, $exit);
+        self::assertStringContainsString('only one input path', self::read($stderr));
+    }
+
+    public function testUnwritableOutputPathExitsOneAndWritesToStderr(): void
+    {
+        $stderr = fopen('php://memory', 'r+');
+        self::assertNotFalse($stderr);
+
+        $cli  = new Cli(new HtmlMin(), self::stream('<p>x</p>'), self::stream(''), $stderr);
+        // A path inside a directory that does not exist cannot be written.
+        $exit = $cli->run(['html-min', '--output=/no/such/dir/out.html']);
+
+        self::assertSame(1, $exit);
+        self::assertStringContainsString('cannot write output file', self::read($stderr));
+    }
+
     /**
      * @return resource
      */

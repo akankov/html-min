@@ -57,6 +57,23 @@ final class MinifierMiddlewareTest extends TestCase
         self::assertSame($jsonBody, (string) $response->getBody(), 'non-allowlisted content-type must pass through');
     }
 
+    public function testResponseWithoutContentTypeIsLeftUntouched(): void
+    {
+        // No Content-Type header at all: the middleware can't know it's HTML,
+        // so it must pass the body through unchanged.
+        $factory = new Psr17Factory();
+        $body = "<html>\n<body>\n  <p>hi</p>\n</body>\n</html>";
+        $handler = new StubHandler(
+            $factory->createResponse(200)->withBody($factory->createStream($body)),
+        );
+
+        $middleware = new MinifierMiddleware(new HtmlMin(), $factory);
+
+        $response = $middleware->process(new ServerRequest('GET', '/'), $handler);
+
+        self::assertSame($body, (string) $response->getBody(), 'no content-type must pass through');
+    }
+
     public function testCustomContentTypeAllowlistIsRespected(): void
     {
         // Consumers who serve text/html;charset=utf-8 from a CDN-like

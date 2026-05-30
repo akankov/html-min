@@ -117,13 +117,10 @@ class Cli
             return (string) stream_get_contents($this->stdin);
         }
 
-        if (!is_file($path) || !is_readable($path)) {
-            fwrite($this->stderr, "html-min: cannot read input file: {$path}\n");
-
-            return null;
-        }
-
-        $html = file_get_contents($path);
+        // @ — file_get_contents() already signals failure (missing / unreadable
+        // / a directory) by returning false; the raw PHP warning would only
+        // duplicate the stderr message below.
+        $html = @file_get_contents($path);
         if ($html === false) {
             fwrite($this->stderr, "html-min: cannot read input file: {$path}\n");
 
@@ -141,7 +138,9 @@ class Cli
             return 0;
         }
 
-        if (file_put_contents($path, $minified) === false) {
+        // @ — suppress the raw PHP warning; the false return + stderr line below
+        // are the clean failure signal.
+        if (@file_put_contents($path, $minified) === false) {
             fwrite($this->stderr, "html-min: cannot write output file: {$path}\n");
 
             return 1;

@@ -197,4 +197,23 @@ final class InlineCssMinifierTest extends TestCase
     {
         self::assertSame($expected, (new InlineCssMinifier())->minify($input));
     }
+
+    /**
+     * Escape handling and graceful degradation on truncated input — the scanner
+     * must not crash and must emit the (unclosed) string/url verbatim.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideMalformedAndEscapeCases(): iterable
+    {
+        yield 'escaped quote inside string' => ['a::before{content:"a\\"b"}', 'a::before{content:"a\\"b"}'];
+        yield 'unterminated string runs to end' => ['a{content:"abc', 'a{content:"abc'];
+        yield 'unterminated url runs to end' => ['a{background:url(abc', 'a{background:url(abc'];
+    }
+
+    #[DataProvider('provideMalformedAndEscapeCases')]
+    public function testMalformedAndEscape(string $input, string $expected): void
+    {
+        self::assertSame($expected, (new InlineCssMinifier())->minify($input));
+    }
 }
