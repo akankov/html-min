@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.0] — 2026-05-30
+
+Extensibility and internal-architecture release. Every library class is now open
+for subclassing, and the ~2,000-line `HtmlMin` god class is decomposed into five
+focused `Internal` collaborators — all behaviour-preserving, no public API
+change. Also fixes an adversarial-input placeholder collision and adds a
+test-effectiveness toolchain (line-coverage gate + Infection mutation testing,
+with Codecov and Stryker badges). Released from PRs
+[#24](https://github.com/akankov/html-min/pull/24)–[#29](https://github.com/akankov/html-min/pull/29).
+
 ### Fixed
 
 - **Adversarial input that collides with internal placeholders no longer
