@@ -77,39 +77,56 @@ final class HtmlParser
     private const string PLACEHOLDER_PREFIX = '____HTMLMIN_';
 
     /**
-     * Character-to-placeholder pairs for URL-metacharacters. The placeholder
-     * shape is opaque to consumers; only the prefix (PLACEHOLDER_PREFIX) is
-     * a stable contract, exposed via {@see isPlaceholder()}.
+     * URL-metacharacter → token-name pairs. The full placeholder is built at
+     * runtime by {@see nonceMap()} as PREFIX + per-process nonce + token +
+     * "____", so caller HTML that happens to contain a literal placeholder
+     * string cannot collide with — and be corrupted by — the restore pass.
+     * Only the prefix (PLACEHOLDER_PREFIX) is a stable contract, exposed via
+     * {@see isPlaceholder()}.
      *
      * @var array<string, string>
      */
-    private const array URL_CHAR_PLACEHOLDERS = [
-        '[' => '____HTMLMIN_SQUARE_BRACKET_LEFT____',
-        ']' => '____HTMLMIN_SQUARE_BRACKET_RIGHT____',
-        '{' => '____HTMLMIN_BRACKET_LEFT____',
-        '}' => '____HTMLMIN_BRACKET_RIGHT____',
+    private const array URL_CHAR_TOKENS = [
+        '[' => 'SQUARE_BRACKET_LEFT',
+        ']' => 'SQUARE_BRACKET_RIGHT',
+        '{' => 'BRACKET_LEFT',
+        '}' => 'BRACKET_RIGHT',
     ];
 
     /**
-     * Character-to-placeholder pairs for HTML-entity-significant characters
-     * that must survive libxml's entity decoding round-trip.
+     * HTML-entity-significant character → token-name pairs (must survive
+     * libxml's entity decoding round-trip). See {@see URL_CHAR_TOKENS}.
      *
      * @var array<string, string>
      */
-    private const array ENTITY_CHAR_PLACEHOLDERS = [
-        '&' => '____HTMLMIN_AMP____',
-        '|' => '____HTMLMIN_PIPE____',
-        '+' => '____HTMLMIN_PLUS____',
-        '%' => '____HTMLMIN_PERCENT____',
-        '@' => '____HTMLMIN_AT____',
+    private const array ENTITY_CHAR_TOKENS = [
+        '&' => 'AMP',
+        '|' => 'PIPE',
+        '+' => 'PLUS',
+        '%' => 'PERCENT',
+        '@' => 'AT',
     ];
+
+    private const string GOOGLE_AMP_TOKEN = 'GOOGLE_AMP';
 
     /**
      * Special "<html ⚡" marker (Google AMP): libxml doesn't like raw "⚡"
      * bytes in tag names. Replaced with a placeholder attribute.
      */
-    private const string AMP_PLACEHOLDER_SEARCH  = '<html ⚡';
-    private const string AMP_PLACEHOLDER_REPLACE = '<html ____HTMLMIN_GOOGLE_AMP____="true"';
+    private const string AMP_PLACEHOLDER_SEARCH = '<html ⚡';
+
+    /**
+     * Per-process random nonce embedded in every placeholder so adversarial
+     * input cannot guess (and thus cannot collide with) the tokens the restore
+     * pass rewrites. Stable for the process lifetime; the maps below cache off it.
+     */
+    private static ?string $placeholderNonce = null;
+
+    /** @var array<string, string>|null */
+    private static ?array $urlCharPlaceholders = null;
+
+    /** @var array<string, string>|null */
+    private static ?array $entityCharPlaceholders = null;
 
     /**
      * True when the given string starts with the preprocessing placeholder
@@ -329,7 +346,7 @@ final class HtmlParser
             $regExUrl = '/(\[?\bhttps?:\/\/[^\s<>]+(?:\(\w+\)|[^[:punct:]\s]|\/|}|]))/i';
             $replaced = preg_replace_callback(
                 $regExUrl,
-                static fn (array $m): string => strtr($m[0], self::URL_CHAR_PLACEHOLDERS),
+                static fn (array $m): string => strtr($m[0], self::urlCharPlaceholders()),
                 $html,
             );
             if ($replaced !== null) {
@@ -338,6 +355,47 @@ final class HtmlParser
         }
 
         return strtr($html, self::buildGlobalEntityMap());
+    }
+
+    private static function placeholderNonce(): string
+    {
+        return self::$placeholderNonce ??= bin2hex(random_bytes(5));
+    }
+
+    /**
+     * Build a char → placeholder map from char → token-name pairs, embedding
+     * the per-process nonce so the placeholders are unguessable from input.
+     *
+     * @param array<string, string> $tokens
+     *
+     * @return array<string, string>
+     */
+    private static function nonceMap(array $tokens): array
+    {
+        $prefix = self::PLACEHOLDER_PREFIX . self::placeholderNonce() . '_';
+        $map = [];
+        foreach ($tokens as $char => $token) {
+            $map[$char] = $prefix . $token . '____';
+        }
+
+        return $map;
+    }
+
+    /** @return array<string, string> */
+    private static function urlCharPlaceholders(): array
+    {
+        return self::$urlCharPlaceholders ??= self::nonceMap(self::URL_CHAR_TOKENS);
+    }
+
+    /** @return array<string, string> */
+    private static function entityCharPlaceholders(): array
+    {
+        return self::$entityCharPlaceholders ??= self::nonceMap(self::ENTITY_CHAR_TOKENS);
+    }
+
+    private static function googleAmpPlaceholder(): string
+    {
+        return self::PLACEHOLDER_PREFIX . self::placeholderNonce() . '_' . self::GOOGLE_AMP_TOKEN . '____';
     }
 
     /**
@@ -349,8 +407,8 @@ final class HtmlParser
             return self::$globalEntityMap;
         }
 
-        return self::$globalEntityMap = [self::AMP_PLACEHOLDER_SEARCH => self::AMP_PLACEHOLDER_REPLACE]
-                                       + self::ENTITY_CHAR_PLACEHOLDERS;
+        return self::$globalEntityMap = [self::AMP_PLACEHOLDER_SEARCH => '<html ' . self::googleAmpPlaceholder() . '="true"']
+                                       + self::entityCharPlaceholders();
     }
 
     /**
@@ -374,8 +432,8 @@ final class HtmlParser
             return self::$entityRestoreMap;
         }
 
-        $placeholders = array_flip(self::URL_CHAR_PLACEHOLDERS)
-                      + array_flip(self::ENTITY_CHAR_PLACEHOLDERS);
+        $placeholders = array_flip(self::urlCharPlaceholders())
+                      + array_flip(self::entityCharPlaceholders());
         $map = $placeholders;
         foreach ($placeholders as $key => $val) {
             $map[strtolower($key)] = $val;
@@ -405,7 +463,7 @@ final class HtmlParser
         // Undo the <html ⚡ placeholder. libxml lowercases attribute names and
         // may strip the quotes around the "true" value, so regex it back.
         $ampRestored = preg_replace(
-            '/<html\s+____HTMLMIN_GOOGLE_AMP____\s*=\s*(?:"true"|\'true\'|true)/i',
+            '/<html\s+' . self::googleAmpPlaceholder() . '\s*=\s*(?:"true"|\'true\'|true)/i',
             self::AMP_PLACEHOLDER_SEARCH,
             $html,
         );
