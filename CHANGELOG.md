@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Library classes are no longer `final`.** Every class is now open for
+  extension (`final` and the `final readonly class` form are removed throughout),
+  since consumers of a library legitimately need to subclass. Value objects
+  (`MinifierOptions`, `Cli`, `MinifierMiddleware`, `DomSerializer`) keep
+  **property-level `readonly`** — they stay immutable but are freely
+  subclassable (unlike a `readonly class`, which only accepts readonly
+  subclasses). Rector's `ReadOnlyClassRector` is disabled to preserve this.
 - **Decomposing the `HtmlMin` god class** (2,023 → 1,438 lines so far), in
   behaviour-preserving slices:
     - HTML5 optional-end-tag rules — the 280-line `domNodeClosingTagOptional()`

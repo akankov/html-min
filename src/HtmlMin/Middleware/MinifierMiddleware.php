@@ -21,7 +21,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * `text/html`) are returned unchanged so the middleware can sit safely
  * in front of mixed JSON / HTML stacks.
  */
-final readonly class MinifierMiddleware implements MiddlewareInterface
+class MinifierMiddleware implements MiddlewareInterface
 {
     /**
      * Lower-cased content-type values to minify. Charset parameters and
@@ -29,15 +29,15 @@ final readonly class MinifierMiddleware implements MiddlewareInterface
      *
      * @var list<string>
      */
-    private array $contentTypes;
+    private readonly array $contentTypes;
 
     /**
      * @param list<string> $contentTypes content-types to minify;
      *                                   defaults to `['text/html']`.
      */
     public function __construct(
-        private HtmlMin $minifier,
-        private StreamFactoryInterface $streamFactory,
+        private readonly HtmlMin $minifier,
+        private readonly StreamFactoryInterface $streamFactory,
         array $contentTypes = ['text/html'],
     ) {
         $this->contentTypes = array_map(strtolower(...), $contentTypes);

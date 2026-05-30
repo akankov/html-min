@@ -16,7 +16,7 @@ use Override;
  * Sorts HTML attributes (for better gzip) and removes redundant defaults
  * (type=text/css on link/style, type=submit on button, etc.).
  */
-final class OptimizeAttributes implements DomObserver
+class OptimizeAttributes implements DomObserver
 {
     private const string REMOVABLE_EMPTY_ATTRIBUTES_PATTERN = '/^(?:class|id|style|title|lang|dir|on(?:focus|blur|change|click|dblclick|mouse(?:down|up|over|move|out)|key(?:press|down|up)))$/';
 
@@ -79,7 +79,7 @@ final class OptimizeAttributes implements DomObserver
     /**
      * Receive dom elements before the minification.
      *
-     * @phan-suppress PhanUnusedPublicFinalMethodParameter
+     * @phan-suppress PhanUnusedPublicMethodParameter
      */
     #[Override]
     public function domElementBeforeMinification(DOMElement $element, HtmlMinInterface $htmlMin): void

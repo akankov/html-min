@@ -19,7 +19,7 @@ use DOMText;
  * {@see OptionalTagOmission}. Extracted from HtmlMin so the DOM-walk /
  * whitespace / attribute-string logic lives on its own.
  */
-final class DomSerializer
+class DomSerializer
 {
     private const string UNQUOTED_ATTRIBUTE_VALUE_FORBIDDEN_CHARS = "\"'=<>` \t\r\n\f";
 

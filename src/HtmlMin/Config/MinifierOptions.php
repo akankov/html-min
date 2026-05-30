@@ -15,7 +15,7 @@ namespace Akankov\HtmlMin\Config;
  * pre-2.2 no-arg HtmlMin() defaults exactly so an empty
  * `new MinifierOptions()` is a true no-op against the prior behaviour.
  */
-final readonly class MinifierOptions
+class MinifierOptions
 {
     /**
      * @param string[] $localDomains
@@ -25,37 +25,37 @@ final readonly class MinifierOptions
      * @param string[]|null $templateLogicSyntaxInSpecialScriptTags
      */
     public function __construct(
-        public bool $optimizeViaHtmlDomParser = true,
-        public bool $optimizeAttributes = true,
-        public bool $removeComments = true,
-        public bool $removeWhitespaceAroundTags = false,
-        public bool $removeOmittedQuotes = true,
-        public bool $removeOmittedHtmlTags = true,
-        public bool $removeHttpPrefixFromAttributes = false,
-        public bool $removeHttpsPrefixFromAttributes = false,
-        public bool $keepHttpAndHttpsPrefixOnExternalAttributes = false,
-        public bool $sortCssClassNames = true,
-        public bool $sortHtmlAttributes = true,
-        public bool $removeDeprecatedScriptCharsetAttribute = true,
-        public bool $removeDefaultAttributes = false,
-        public bool $removeDeprecatedAnchorName = true,
-        public bool $removeDeprecatedTypeFromStylesheetLink = true,
-        public bool $removeDeprecatedTypeFromStyleAndLinkTag = true,
-        public bool $removeDefaultMediaTypeFromStyleAndLinkTag = true,
-        public bool $removeDefaultTypeFromButton = false,
-        public bool $removeDeprecatedTypeFromScriptTag = true,
-        public bool $removeValueFromEmptyInput = true,
-        public bool $removeEmptyAttributes = true,
-        public bool $sumUpWhitespace = true,
-        public bool $removeSpacesBetweenTags = false,
-        public bool $keepBrokenHtml = false,
-        public bool $minifyInlineCss = false,
-        public bool $minifyInlineJs = false,
-        public array $localDomains = [],
-        public array $specialHtmlCommentsStartingWith = [],
-        public array $specialHtmlCommentsEndingWith = [],
-        public ?array $specialScriptTags = null,
-        public ?array $templateLogicSyntaxInSpecialScriptTags = null,
+        public readonly bool $optimizeViaHtmlDomParser = true,
+        public readonly bool $optimizeAttributes = true,
+        public readonly bool $removeComments = true,
+        public readonly bool $removeWhitespaceAroundTags = false,
+        public readonly bool $removeOmittedQuotes = true,
+        public readonly bool $removeOmittedHtmlTags = true,
+        public readonly bool $removeHttpPrefixFromAttributes = false,
+        public readonly bool $removeHttpsPrefixFromAttributes = false,
+        public readonly bool $keepHttpAndHttpsPrefixOnExternalAttributes = false,
+        public readonly bool $sortCssClassNames = true,
+        public readonly bool $sortHtmlAttributes = true,
+        public readonly bool $removeDeprecatedScriptCharsetAttribute = true,
+        public readonly bool $removeDefaultAttributes = false,
+        public readonly bool $removeDeprecatedAnchorName = true,
+        public readonly bool $removeDeprecatedTypeFromStylesheetLink = true,
+        public readonly bool $removeDeprecatedTypeFromStyleAndLinkTag = true,
+        public readonly bool $removeDefaultMediaTypeFromStyleAndLinkTag = true,
+        public readonly bool $removeDefaultTypeFromButton = false,
+        public readonly bool $removeDeprecatedTypeFromScriptTag = true,
+        public readonly bool $removeValueFromEmptyInput = true,
+        public readonly bool $removeEmptyAttributes = true,
+        public readonly bool $sumUpWhitespace = true,
+        public readonly bool $removeSpacesBetweenTags = false,
+        public readonly bool $keepBrokenHtml = false,
+        public readonly bool $minifyInlineCss = false,
+        public readonly bool $minifyInlineJs = false,
+        public readonly array $localDomains = [],
+        public readonly array $specialHtmlCommentsStartingWith = [],
+        public readonly array $specialHtmlCommentsEndingWith = [],
+        public readonly ?array $specialScriptTags = null,
+        public readonly ?array $templateLogicSyntaxInSpecialScriptTags = null,
     ) {
     }
 

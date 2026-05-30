@@ -33,7 +33,7 @@ use Override;
  * wire {@see \Akankov\HtmlMin\HtmlMin::setInlineJsMinifier()} to a third-
  * party tool such as `matthiasmullie/minify`.
  */
-final class InlineJsMinifier implements InlineMinifier
+class InlineJsMinifier implements InlineMinifier
 {
     /**
      * @var list<string>

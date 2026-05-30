@@ -31,7 +31,7 @@ use const XML_PI_NODE;
  *
  * All entry points are static/pure.
  */
-final class HtmlParser
+class HtmlParser
 {
     /** @var array<string, string>|null */
     private static ?array $entityRestoreMap = null;
