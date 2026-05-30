@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Extracted HTML5 optional-end-tag rules out of `HtmlMin`.** The 280-line
+  `domNodeClosingTagOptional()` method (plus its tag lists and memo cache) moved
+  to a dedicated `Internal\OptionalTagOmission` class — the first slice of an
+  ongoing decomposition of the `HtmlMin` god class (2,023 → 1,704 lines).
+  Behaviour is unchanged (full suite green); the protected
+  `getNextSiblingOfTypeDOMElement()` is kept as a delegating shim so existing
+  subclasses do not break. Internal — no public surface change.
 - **CI now measures test effectiveness.** Added a coverage gate (line coverage
   floor, enforced via `bin/coverage-check.php`) and mutation testing with
   Infection (MSI floor). Both run in `make ci` and a new CI job, backed by a
