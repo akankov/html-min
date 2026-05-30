@@ -26,13 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **property-level `readonly`** — they stay immutable but are freely
   subclassable (unlike a `readonly class`, which only accepts readonly
   subclasses). Rector's `ReadOnlyClassRector` is disabled to preserve this.
-- **Decomposing the `HtmlMin` god class** (2,023 → 1,438 lines so far), in
+- **Decomposing the `HtmlMin` god class** (2,023 → 1,359 lines so far), in
   behaviour-preserving slices:
     - HTML5 optional-end-tag rules — the 280-line `domNodeClosingTagOptional()`
       plus its tag lists and memo cache → `Internal\OptionalTagOmission`.
     - DOM → HTML5 serialization — `domNodeToString()` / attribute-string
       building / whitespace helpers → `Internal\DomSerializer`, which reads its
       flags through the existing `HtmlMinInterface` config contract.
+    - Opt-in inline CSS/JS minification — the `<style>`/`<script>` coordination,
+      pluggable-override storage, and bundled-minifier fallback →
+      `Internal\InlineContentMinifier`.
       The protected `getNextSiblingOfTypeDOMElement()` and `domNodeToString()` are
       kept as delegating shims so existing subclasses do not break. Internal — no
       public surface change.
