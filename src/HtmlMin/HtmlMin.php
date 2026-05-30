@@ -9,6 +9,7 @@ use Akankov\HtmlMin\Contract\DomObserver;
 use Akankov\HtmlMin\Contract\HtmlMinInterface;
 use Akankov\HtmlMin\Contract\ObserverPhase;
 use Akankov\HtmlMin\Internal\DoctypeKind;
+use Akankov\HtmlMin\Internal\DomSerializer;
 use Akankov\HtmlMin\Internal\HtmlParser;
 use Akankov\HtmlMin\Internal\Minifier\InlineCssMinifier;
 use Akankov\HtmlMin\Internal\Minifier\InlineJsMinifier;
@@ -16,7 +17,6 @@ use Akankov\HtmlMin\Internal\Minifier\InlineMinifier;
 use Akankov\HtmlMin\Internal\OptionalTagOmission;
 use Akankov\HtmlMin\Observer\OptimizeAttributes;
 use Closure;
-use DOMAttr;
 use DOMComment;
 use DOMDocument;
 use DOMDocumentType;
@@ -38,12 +38,13 @@ class HtmlMin implements HtmlMinInterface
 
     private const string ATTR_WHITESPACE_REPLACEMENT = ' $1$2';
 
-    private const string UNQUOTED_ATTRIBUTE_VALUE_FORBIDDEN_CHARS = "\"'=<>` \t\r\n\f";
-
     private static string $regExSpace = "/[[:space:]]{2,}|[\r\n]/u";
 
     /** HTML5 optional-end-tag rules; see {@see OptionalTagOmission}. */
     private readonly OptionalTagOmission $optionalTagOmission;
+
+    /** DOM → HTML5 string serialization; see {@see DomSerializer}. */
+    private readonly DomSerializer $domSerializer;
 
     /**
      * @var string[]
@@ -82,53 +83,6 @@ class HtmlMin implements HtmlMinInterface
         'nav'     => '',
         'p'       => '',
         'script'  => '',
-    ];
-
-    /**
-     * @var array<string, string>
-     */
-    private static array $booleanAttributes = [
-        'allowfullscreen' => '',
-        'async'           => '',
-        'autofocus'       => '',
-        'autoplay'        => '',
-        'checked'         => '',
-        'compact'         => '',
-        'controls'        => '',
-        'declare'         => '',
-        'default'         => '',
-        'defaultchecked'  => '',
-        'defaultmuted'    => '',
-        'defaultselected' => '',
-        'defer'           => '',
-        'disabled'        => '',
-        'enabled'         => '',
-        'formnovalidate'  => '',
-        'hidden'          => '',
-        'indeterminate'   => '',
-        'inert'           => '',
-        'ismap'           => '',
-        'itemscope'       => '',
-        'loop'            => '',
-        'multiple'        => '',
-        'muted'           => '',
-        'nohref'          => '',
-        'noresize'        => '',
-        'noshade'         => '',
-        'novalidate'      => '',
-        'nowrap'          => '',
-        'open'            => '',
-        'pauseonexit'     => '',
-        'readonly'        => '',
-        'required'        => '',
-        'reversed'        => '',
-        'scoped'          => '',
-        'seamless'        => '',
-        'selected'        => '',
-        'sortable'        => '',
-        'truespeed'       => '',
-        'typemustmatch'   => '',
-        'visible'         => '',
     ];
 
     /**
@@ -276,6 +230,7 @@ class HtmlMin implements HtmlMinInterface
         $this->domLoopBeforeObservers = new SplObjectStorage();
         $this->domLoopAfterObservers = new SplObjectStorage();
         $this->optionalTagOmission = new OptionalTagOmission();
+        $this->domSerializer = new DomSerializer($this, $this->optionalTagOmission);
 
         $this->attachObserverToTheDomLoop(new OptimizeAttributes(), ObserverPhase::After);
 
@@ -589,219 +544,13 @@ class HtmlMin implements HtmlMinInterface
         return $this;
     }
 
-    private function domNodeAttributesToString(DOMNode $node): string
-    {
-        if ($node->attributes === null || $node->attributes->length === 0) {
-            return '';
-        }
-
-        $doOptimizeAttributes = $this->doOptimizeAttributes;
-        $doRemoveOmittedQuotes = $this->doRemoveOmittedQuotes;
-
-        // Remove quotes around attribute values, when allowed (<p class="foo"> → <p class=foo>)
-        $attr_str = '';
-        /** @var DOMAttr $attribute */
-        foreach ($node->attributes as $attribute) {
-            $attrName = $attribute->name;
-            $attrValue = $attribute->value;
-
-            if ($attr_str !== '') {
-                $attr_str .= ' ';
-            }
-
-            $attr_str .= $attrName;
-
-            if ($doOptimizeAttributes && isset(self::$booleanAttributes[$attrName])) {
-                continue;
-            }
-
-            $attr_str .= '=';
-
-            // http://www.whatwg.org/specs/web-apps/current-work/multipage/syntax.html#attributes-0
-            $omit_quotes = $doRemoveOmittedQuotes
-                           &&
-                           $attrValue !== ''
-                           &&
-                           !HtmlParser::isPlaceholder($attrName)
-                           &&
-                           !str_contains($attrName, ' ')
-                           &&
-                           strpbrk($attrValue, self::UNQUOTED_ATTRIBUTE_VALUE_FORBIDDEN_CHARS) === false;
-
-            if (
-                $doOptimizeAttributes
-                &&
-                (
-                    $attrName === 'srcset'
-                    ||
-                    $attrName === 'sizes'
-                )
-                &&
-                (
-                    str_contains($attrValue, "\n")
-                    ||
-                    str_contains($attrValue, "\r")
-                    ||
-                    str_contains($attrValue, "\t")
-                    ||
-                    str_contains($attrValue, '  ')
-                )
-            ) {
-                $normalizedAttrValue = preg_replace(self::$regExSpace, ' ', $attrValue);
-                if ($normalizedAttrValue !== null) {
-                    $attrValue = $normalizedAttrValue;
-                }
-            }
-
-            if ($omit_quotes) {
-                $attr_str .= $attrValue;
-            } else {
-                $quoteTmp = str_contains($attrValue, '"') ? "'" : '"';
-                $attr_str .= $quoteTmp . $attrValue . $quoteTmp;
-            }
-        }
-
-        return $attr_str;
-    }
-
+    /**
+     * @deprecated Internal serializer entry; use {@see DomSerializer::toString()}.
+     *             Kept (delegating) so existing subclasses do not break.
+     */
     protected function domNodeToString(DOMNode $node): string
     {
-        // Collect per-level output into a parts array and join once at the end:
-        // avoids the quadratic cost of `$html .= $chunk` on the ~30 KB output of
-        // large documents (wikipedia fixture). Whitespace handling that used to
-        // call `rtrim($html)` / `str_ends_with($html, ' ')` on the growing
-        // accumulator is delegated to partsEndWithSpace() / rtrimParts(), which
-        // keep the same semantics since every append is either whitespace-only
-        // or ends with non-whitespace — whitespace runs never straddle parts.
-        $parts = [];
-        $emptyStringTmp = '';
-
-        foreach ($node->childNodes as $child) {
-            if ($emptyStringTmp === 'is_empty') {
-                $emptyStringTmp = 'last_was_empty';
-            } else {
-                $emptyStringTmp = '';
-            }
-
-            if ($child instanceof DOMElement) {
-                $attributes = $this->domNodeAttributesToString($child);
-                $parts[] = $attributes === ''
-                    ? '<' . $child->tagName
-                    : '<' . $child->tagName . ' ' . $attributes;
-                $parts[] = '>' . $this->domNodeToString($child);
-
-                if (
-                    !(
-                        $this->doRemoveOmittedHtmlTags
-                        &&
-                        !$this->isHTML4
-                        &&
-                        !$this->isXHTML
-                        &&
-                        $this->optionalTagOmission->isOptional($child)
-                    )
-                ) {
-                    $parts[] = '</' . $child->tagName . '>';
-                }
-
-                if (!$this->doRemoveWhitespaceAroundTags) {
-                    /** @var DOMText|null $nextSiblingTmp - false-positive error from phpstan */
-                    $nextSiblingTmp = $child->nextSibling;
-                    if (
-                        $nextSiblingTmp instanceof DOMText
-                        &&
-                        $nextSiblingTmp->wholeText === ' '
-                    ) {
-                        if (
-                            $emptyStringTmp !== 'last_was_empty'
-                            &&
-                            !self::partsEndWithSpace($parts)
-                        ) {
-                            self::rtrimParts($parts);
-
-                            if (
-                                $child->parentNode
-                                &&
-                                $child->parentNode->nodeName !== 'head'
-                            ) {
-                                $parts[] = ' ';
-                            }
-                        }
-                        $emptyStringTmp = 'is_empty';
-                    }
-                }
-            } elseif ($child instanceof DOMText) {
-                if ($child->isElementContentWhitespace()) {
-                    if (
-                        $child->previousSibling !== null
-                        &&
-                        $child->nextSibling !== null
-                    ) {
-                        if (
-                            (
-                                $child->wholeText
-                                &&
-                                str_contains($child->wholeText, ' ')
-                            )
-                            ||
-                            (
-                                $emptyStringTmp !== 'last_was_empty'
-                                &&
-                                !self::partsEndWithSpace($parts)
-                            )
-                        ) {
-                            self::rtrimParts($parts);
-
-                            if (
-                                $child->parentNode
-                                &&
-                                $child->parentNode->nodeName !== 'head'
-                            ) {
-                                $parts[] = ' ';
-                            }
-                        }
-                        $emptyStringTmp = 'is_empty';
-                    }
-                } elseif ($child->wholeText !== '') {
-                    $parts[] = $child->wholeText;
-                }
-            } elseif ($child instanceof DOMComment) {
-                $parts[] = '<!--' . $child->textContent . '-->';
-            }
-        }
-
-        return implode('', $parts);
-    }
-
-    /**
-     * @param string[] $parts
-     */
-    private static function partsEndWithSpace(array $parts): bool
-    {
-        $lastIdx = array_key_last($parts);
-
-        return $lastIdx !== null && str_ends_with($parts[$lastIdx], ' ');
-    }
-
-    /**
-     * Same effect as `rtrim(implode('', $parts))` without materializing the
-     * full string: pops all-whitespace parts from the tail, then rtrim's the
-     * first non-all-whitespace part in place.
-     *
-     * @param string[] $parts
-     */
-    private static function rtrimParts(array &$parts): void
-    {
-        while ($parts !== []) {
-            $lastIdx = array_key_last($parts);
-            $trimmed = rtrim($parts[$lastIdx]);
-            if ($trimmed !== '') {
-                $parts[$lastIdx] = $trimmed;
-
-                return;
-            }
-            array_pop($parts);
-        }
+        return $this->domSerializer->toString($node);
     }
 
     private function getDoctype(DOMNode $node): string
@@ -1312,7 +1061,7 @@ class HtmlMin implements HtmlMinInterface
         // -------------------------------------------------------------------------
 
         return [
-            'html'    => $doctypeStr . $this->domNodeToString($dom),
+            'html'    => $doctypeStr . $this->domSerializer->toString($dom),
             'doctype' => $detectedDoctype,
         ];
     }
