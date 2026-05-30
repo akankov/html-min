@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Adversarial input that collides with internal placeholders no longer
+  corrupts output.** The parser masks libxml-hostile characters (`&|+%@[]{}`)
+  with placeholder tokens and reverses them after serialization; caller content
+  that literally contained a token (e.g. `____HTMLMIN_AMP____`) was rewritten by
+  the restore pass (→ `&`). Placeholders now embed a per-process random nonce,
+  so input cannot collide with them. Internal — entity/AMP/template round-trips
+  are unchanged; only the obscure collision case is fixed.
+
 ### Changed
 
 - **CI now measures test effectiveness.** Added a coverage gate (line coverage
