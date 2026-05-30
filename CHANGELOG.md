@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **property-level `readonly`** — they stay immutable but are freely
   subclassable (unlike a `readonly class`, which only accepts readonly
   subclasses). Rector's `ReadOnlyClassRector` is disabled to preserve this.
-- **Decomposing the `HtmlMin` god class** (2,023 → 1,249 lines so far), in
+- **Decomposing the `HtmlMin` god class** (2,023 → 1,220 lines so far), in
   behaviour-preserving slices:
     - HTML5 optional-end-tag rules — the 280-line `domNodeClosingTagOptional()`
       plus its tag lists and memo cache → `Internal\OptionalTagOmission`.
@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Whitespace-collapsing passes — `removeWhitespaceAroundTags()` /
       `sumUpWhitespace()` and their tag tables → `Internal\WhitespaceNormalizer`
       (config-free static transforms; the toggles still gate them at the call site).
+    - Doctype string building — `getDoctype()` → `Internal\Doctype::serialize()`,
+      sitting next to the `Internal\DoctypeKind` classifier.
       The protected `getNextSiblingOfTypeDOMElement()` and `domNodeToString()` are
       kept as delegating shims so existing subclasses do not break. Internal — no
       public surface change.
