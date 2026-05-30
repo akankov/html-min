@@ -90,21 +90,16 @@ class WhitespaceNormalizer
         // thousands of times on large docs. Instead, pre-compute the set of text
         // nodes that live inside any whitespace-protected ancestor and check via
         // O(1) lookup during the main pass.
-        /** @var SplObjectStorage<DOMText, null> $protected */
+        // findAll() with a tag selector yields elements; with //text() it yields
+        // text nodes — so no instanceof narrowing is needed here.
+        /** @var SplObjectStorage<DOMNode, null> $protected */
         $protected = new SplObjectStorage();
         $skipSelector = implode(', ', array_keys(self::SKIP_TAGS));
         foreach (HtmlParser::findAll($dom, $skipSelector) as $protectedAncestor) {
-            if (!$protectedAncestor instanceof DOMElement) {
-                continue;
-            }
             self::collectDescendantTextNodes($protectedAncestor, $protected);
         }
 
         foreach (HtmlParser::findAll($dom, '//text()') as $text_node) {
-            if (!$text_node instanceof DOMText) {
-                continue;
-            }
-
             if ($protected->offsetExists($text_node)) {
                 continue;
             }
@@ -117,7 +112,7 @@ class WhitespaceNormalizer
     }
 
     /**
-     * @param SplObjectStorage<DOMText, null> $store
+     * @param SplObjectStorage<DOMNode, null> $store
      */
     private static function collectDescendantTextNodes(DOMNode $node, SplObjectStorage $store): void
     {
