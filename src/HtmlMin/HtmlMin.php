@@ -13,6 +13,7 @@ use Akankov\HtmlMin\Internal\DomSerializer;
 use Akankov\HtmlMin\Internal\HtmlParser;
 use Akankov\HtmlMin\Internal\InlineContentMinifier;
 use Akankov\HtmlMin\Internal\OptionalTagOmission;
+use Akankov\HtmlMin\Internal\WhitespaceNormalizer;
 use Akankov\HtmlMin\Observer\OptimizeAttributes;
 use DOMComment;
 use DOMDocument;
@@ -25,16 +26,12 @@ use Override;
 use Psr\Log\LoggerInterface;
 use SplObjectStorage;
 
-use const XML_TEXT_NODE;
-
 class HtmlMin implements HtmlMinInterface
 {
     /** Inner pass for collapseAttributeWhitespace(): collapses run of spaces between attributes. */
     private const string ATTR_WHITESPACE_PATTERN = '#([^\s=]+)(=([\'"]?)(.*?)\3)?(\s+|$)#su';
 
     private const string ATTR_WHITESPACE_REPLACEMENT = ' $1$2';
-
-    private static string $regExSpace = "/[[:space:]]{2,}|[\r\n]/u";
 
     /** HTML5 optional-end-tag rules; see {@see OptionalTagOmission}. */
     private readonly OptionalTagOmission $optionalTagOmission;
@@ -65,31 +62,6 @@ class HtmlMin implements HtmlMinInterface
         'source',
         'track',
         'wbr',
-    ];
-
-    /**
-     * @var string[]
-     */
-    private static array $trimWhitespaceFromTags = [
-        'article' => '',
-        'br'      => '',
-        'div'     => '',
-        'footer'  => '',
-        'hr'      => '',
-        'nav'     => '',
-        'p'       => '',
-        'script'  => '',
-    ];
-
-    /**
-     * @var array<string, string>
-     */
-    private static array $skipTagsForRemoveWhitespace = [
-        'code'     => '',
-        'pre'      => '',
-        'script'   => '',
-        'style'    => '',
-        'textarea' => '',
     ];
 
     /**
@@ -1023,7 +995,7 @@ class HtmlMin implements HtmlMinInterface
         // -------------------------------------------------------------------------
 
         if ($this->doSumUpWhitespace) {
-            $this->sumUpWhitespace($dom);
+            WhitespaceNormalizer::sumUp($dom);
         }
 
         foreach (HtmlParser::findAll($dom, '*') as $element) {
@@ -1036,7 +1008,7 @@ class HtmlMin implements HtmlMinInterface
             // -------------------------------------------------------------------------
 
             if ($this->doRemoveWhitespaceAroundTags) {
-                $this->removeWhitespaceAroundTags($element);
+                WhitespaceNormalizer::removeAroundTags($element);
             }
 
             // -------------------------------------------------------------------------
@@ -1188,34 +1160,6 @@ class HtmlMin implements HtmlMinInterface
     }
 
     /**
-     * Trim tags in the dom.
-     */
-    private function removeWhitespaceAroundTags(DOMElement $element): void
-    {
-        if (isset(self::$trimWhitespaceFromTags[$element->tagName])) {
-            /** @var array<?DOMNode> $candidates */
-            $candidates = [];
-            if ($element->childNodes->length > 0) {
-                $candidates[] = $element->firstChild;
-                $candidates[] = $element->lastChild;
-                $candidates[] = $element->previousSibling;
-                $candidates[] = $element->nextSibling;
-            }
-
-            foreach ($candidates as $candidate) {
-                if ($candidate === null || $candidate->nodeType !== XML_TEXT_NODE) {
-                    continue;
-                }
-
-                $nodeValueTmp = preg_replace(self::$regExSpace, ' ', (string) $candidate->nodeValue);
-                if ($nodeValueTmp !== null) {
-                    $candidate->nodeValue = $nodeValueTmp;
-                }
-            }
-        }
-    }
-
-    /**
      * Callback function for preg_replace_callback use.
      *
      * @param array<int|string, string> $matches PREG matches
@@ -1256,55 +1200,6 @@ class HtmlMin implements HtmlMinInterface
         $this->specialHtmlCommentsEndingWith = $endingWith;
 
         return $this;
-    }
-
-    /**
-     * Sum-up extra whitespace from dom-nodes.
-     */
-    private function sumUpWhitespace(DOMDocument $dom): void
-    {
-        // Walking the parent chain per text node re-traverses the same ancestors
-        // thousands of times on large docs. Instead, pre-compute the set of text
-        // nodes that live inside any whitespace-protected ancestor and check via
-        // O(1) lookup during the main pass.
-        /** @var SplObjectStorage<DOMText, null> $protected */
-        $protected = new SplObjectStorage();
-        $skipSelector = implode(', ', array_keys(self::$skipTagsForRemoveWhitespace));
-        foreach (HtmlParser::findAll($dom, $skipSelector) as $protectedAncestor) {
-            if (!$protectedAncestor instanceof DOMElement) {
-                continue;
-            }
-            self::collectDescendantTextNodes($protectedAncestor, $protected);
-        }
-
-        foreach (HtmlParser::findAll($dom, '//text()') as $text_node) {
-            if (!$text_node instanceof DOMText) {
-                continue;
-            }
-
-            if ($protected->offsetExists($text_node)) {
-                continue;
-            }
-
-            $nodeValueTmp = preg_replace(self::$regExSpace, ' ', $text_node->nodeValue ?? '');
-            if ($nodeValueTmp !== null) {
-                $text_node->nodeValue = $nodeValueTmp;
-            }
-        }
-    }
-
-    /**
-     * @param SplObjectStorage<DOMText, null> $store
-     */
-    private static function collectDescendantTextNodes(DOMNode $node, SplObjectStorage $store): void
-    {
-        foreach ($node->childNodes as $child) {
-            if ($child instanceof DOMText) {
-                $store[$child] = null;
-            } elseif ($child->hasChildNodes()) {
-                self::collectDescendantTextNodes($child, $store);
-            }
-        }
     }
 
     /**
