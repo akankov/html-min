@@ -16,7 +16,7 @@ use DOMText;
  * Extracted from HtmlMin so the 280-line rule set lives — and can be tested —
  * on its own.
  */
-final class OptionalTagOmission
+class OptionalTagOmission
 {
     /**
      * Tags whose end tag may always be omitted.

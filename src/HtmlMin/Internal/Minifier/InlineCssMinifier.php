@@ -20,7 +20,7 @@ use Override;
  * The contents of strings and `url(...)` blocks are emitted verbatim so
  * that things like `content:"/* keep *\/"` or `url(// foo)` survive.
  */
-final class InlineCssMinifier implements InlineMinifier
+class InlineCssMinifier implements InlineMinifier
 {
     /**
      * @var list<string>

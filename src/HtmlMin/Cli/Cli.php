@@ -11,7 +11,7 @@ use Akankov\HtmlMin\HtmlMin;
  * are injected so the entry script in bin/ can wire them to STDIN /
  * STDOUT / STDERR while tests pass `php://memory` resources.
  */
-final readonly class Cli
+class Cli
 {
     private const string USAGE = <<<'TXT'
         Usage: html-min [INPUT] [OPTIONS]
@@ -37,10 +37,10 @@ final readonly class Cli
      * @phpstan-param resource $stderr
      */
     public function __construct(
-        private HtmlMin $minifier,
-        private mixed $stdin,
-        private mixed $stdout,
-        private mixed $stderr,
+        private readonly HtmlMin $minifier,
+        private readonly mixed $stdin,
+        private readonly mixed $stdout,
+        private readonly mixed $stderr,
     ) {
     }
 
