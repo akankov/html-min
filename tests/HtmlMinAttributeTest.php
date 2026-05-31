@@ -514,4 +514,43 @@ final class HtmlMinAttributeTest extends TestCase
     {
         self::assertSame($expected, (new HtmlMin())->minify($input));
     }
+
+    public function testDeprecatedScriptCharsetIsRemoved(): void
+    {
+        // <script charset> is redundant (the HTTP header wins) when there's no src.
+        self::assertSame(
+            '<script>var a=1;</script>',
+            (new HtmlMin())->minify('<script charset="utf-8">var a=1;</script>'),
+        );
+    }
+
+    public function testDeprecatedAnchorNameMatchingIdIsRemoved(): void
+    {
+        // <a name> duplicating the id is a deprecated jump anchor.
+        self::assertSame('<a id=x>y</a>', (new HtmlMin())->minify('<a name="x" id="x">y</a>'));
+    }
+
+    public function testDefaultButtonTypeSubmitIsRemovedWhenEnabled(): void
+    {
+        self::assertSame(
+            '<button>x</button>',
+            (new HtmlMin())->doRemoveDefaultTypeFromButton(true)->minify('<button type="submit">x</button>'),
+        );
+    }
+
+    public function testAttributeRemovalAndRewriteWithoutAttributeSorting(): void
+    {
+        // With attribute sorting off, removals go through removeAttribute() and
+        // value rewrites through setAttribute() (the non-sorted code paths).
+        self::assertSame(
+            '<form><input name=a></form>',
+            (new HtmlMin())->doSortHtmlAttributes(false)->doRemoveDefaultAttributes(true)
+                ->minify('<form method="get"><input name="a"></form>'),
+        );
+        self::assertSame(
+            '<a href=//example.com/>x</a>',
+            (new HtmlMin())->doSortHtmlAttributes(false)->doRemoveHttpPrefixFromAttributes()
+                ->minify('<a href="http://example.com/">x</a>'),
+        );
+    }
 }

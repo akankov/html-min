@@ -947,11 +947,10 @@ class HtmlMin implements HtmlMinInterface
 
         if ($this->domLoopBeforeObservers->count() > 0) {
             foreach (HtmlParser::findAll($dom, '*') as $element) {
-                if (!$element instanceof DOMElement) {
-                    continue;
+                // findAll('*') only yields elements; the instanceof narrows the type.
+                if ($element instanceof DOMElement) {
+                    $this->notifyObserversAboutDomElementBeforeMinification($element);
                 }
-
-                $this->notifyObserversAboutDomElementBeforeMinification($element);
             }
         }
 
@@ -970,23 +969,20 @@ class HtmlMin implements HtmlMinInterface
         }
 
         foreach (HtmlParser::findAll($dom, '*') as $element) {
-            if (!$element instanceof DOMElement) {
-                continue;
+            // findAll('*') only yields elements; the instanceof narrows the type.
+            if ($element instanceof DOMElement) {
+                // ---------------------------------------------------------------------
+                // Remove whitespace around tags. [protected html is still protected]
+                // ---------------------------------------------------------------------
+                if ($this->doRemoveWhitespaceAroundTags) {
+                    WhitespaceNormalizer::removeAroundTags($element);
+                }
+
+                // ---------------------------------------------------------------------
+                // Notify the Observer after the minification.
+                // ---------------------------------------------------------------------
+                $this->notifyObserversAboutDomElementAfterMinification($element);
             }
-
-            // -------------------------------------------------------------------------
-            // Remove whitespace around tags. [protected html is still protected]
-            // -------------------------------------------------------------------------
-
-            if ($this->doRemoveWhitespaceAroundTags) {
-                WhitespaceNormalizer::removeAroundTags($element);
-            }
-
-            // -------------------------------------------------------------------------
-            // Notify the Observer after the minification.
-            // -------------------------------------------------------------------------
-
-            $this->notifyObserversAboutDomElementAfterMinification($element);
         }
 
         // -------------------------------------------------------------------------
@@ -1016,33 +1012,26 @@ class HtmlMin implements HtmlMinInterface
     private function protectTagHelper(DOMDocument $dom, string $selector, bool $useElementScope = false): void
     {
         foreach (HtmlParser::findAll($dom, $selector) as $element) {
-            if (!$element instanceof DOMElement) {
-                continue;
-            }
+            // findAll yields elements; a parsed element always has a parent.
+            if ($element instanceof DOMElement && $element->parentNode !== null) {
+                $placeholder = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
 
-            if ($element->parentNode === null) {
-                continue;
-            }
-
-            $placeholder = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
-
-            if ($useElementScope) {
-                // Replace only the matched element's inner content with the
-                // placeholder. The element itself stays in the DOM, so its
-                // siblings continue through normal minification.
-                $this->protectedChildNodes[$this->protected_tags_counter] = HtmlParser::innerHtml($element);
-                $element->nodeValue = $placeholder;
-            } else {
-                $parentNode = $element->parentNode;
-                if ($parentNode->nodeValue !== null) {
-                    $this->protectedChildNodes[$this->protected_tags_counter] = $parentNode instanceof DOMElement
-                        ? HtmlParser::innerHtml($parentNode)
-                        : '';
-                    $parentNode->nodeValue = $placeholder;
+                if ($useElementScope) {
+                    // Replace only the matched element's inner content with the
+                    // placeholder. The element itself stays in the DOM, so its
+                    // siblings continue through normal minification.
+                    $this->protectedChildNodes[$this->protected_tags_counter] = HtmlParser::innerHtml($element);
+                    $element->nodeValue = $placeholder;
+                } else {
+                    $parentNode = $element->parentNode;
+                    if ($parentNode->nodeValue !== null) {
+                        $this->protectedChildNodes[$this->protected_tags_counter] = $parentNode instanceof DOMElement ? HtmlParser::innerHtml($parentNode) : '';
+                        $parentNode->nodeValue = $placeholder;
+                    }
                 }
-            }
 
-            ++$this->protected_tags_counter;
+                ++$this->protected_tags_counter;
+            }
         }
     }
 
@@ -1056,73 +1045,63 @@ class HtmlMin implements HtmlMinInterface
         $didRemoveComments = false;
 
         foreach (HtmlParser::findAll($dom, 'script, style') as $element) {
-            if (!$element instanceof DOMElement) {
-                continue;
-            }
-
-            if ($element->parentNode === null) {
-                continue;
-            }
-
-            if ($element->tagName === 'script' || $element->tagName === 'style') {
-                $attributes = HtmlParser::getAllAttributes($element);
-                // skip external links
-                if (isset($attributes['src'])) {
-                    continue;
+            // findAll('script, style') yields parented elements.
+            if ($element instanceof DOMElement && $element->parentNode !== null) {
+                if ($element->tagName === 'script' || $element->tagName === 'style') {
+                    $attributes = HtmlParser::getAllAttributes($element);
+                    // skip external links
+                    if (isset($attributes['src'])) {
+                        continue;
+                    }
                 }
-            }
 
-            // Protected <script>/<style> content keeps internal whitespace, while
-            // leading and trailing padding is stripped before serialization.
-            $inner = HtmlParser::innerHtml($element);
-            if ($element->tagName === 'script' || $element->tagName === 'style') {
-                $inner = trim($inner);
-                $inner = $this->inlineContentMinifier->process(
-                    $element,
-                    $inner,
-                    $this->doMinifyInlineCss,
-                    $this->doMinifyInlineJs,
-                    $this->logger,
-                );
-            }
-            $this->protectedChildNodes[$this->protected_tags_counter] = $inner;
-            $element->nodeValue = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
+                // Protected <script>/<style> content keeps internal whitespace, while
+                // leading and trailing padding is stripped before serialization.
+                $inner = HtmlParser::innerHtml($element);
+                if ($element->tagName === 'script' || $element->tagName === 'style') {
+                    $inner = trim($inner);
+                    $inner = $this->inlineContentMinifier->process(
+                        $element,
+                        $inner,
+                        $this->doMinifyInlineCss,
+                        $this->doMinifyInlineJs,
+                        $this->logger,
+                    );
+                }
+                $this->protectedChildNodes[$this->protected_tags_counter] = $inner;
+                $element->nodeValue = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
 
-            ++$this->protected_tags_counter;
+                ++$this->protected_tags_counter;
+            }
         }
 
         foreach (HtmlParser::findAll($dom, '//comment()') as $element) {
-            if (!$element instanceof DOMComment) {
-                continue;
-            }
+            // findAll('//comment()') yields parented comment nodes.
+            if ($element instanceof DOMComment && $element->parentNode !== null) {
+                $text = $element->textContent;
 
-            if ($element->parentNode === null) {
-                continue;
-            }
+                if (
+                    !$this->isConditionalComment($text)
+                    &&
+                    !$this->isSpecialComment($text)
+                ) {
+                    if ($this->doRemoveComments && !str_contains($text, '[')) {
+                        $parentNode = $element->parentNode;
+                        $parentNode->removeChild($element);
+                        $didRemoveComments = true;
+                    }
 
-            $text = $element->textContent;
-
-            if (
-                !$this->isConditionalComment($text)
-                &&
-                !$this->isSpecialComment($text)
-            ) {
-                if ($this->doRemoveComments && !str_contains($text, '[')) {
-                    $parentNode = $element->parentNode;
-                    $parentNode->removeChild($element);
-                    $didRemoveComments = true;
+                    continue;
                 }
 
-                continue;
+                $this->protectedChildNodes[$this->protected_tags_counter] = '<!--' . $text . '-->';
+
+                $child = new DOMText('<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>');
+                $parentNode = $element->parentNode;
+                $parentNode->replaceChild($child, $element);
+
+                ++$this->protected_tags_counter;
             }
-
-            $this->protectedChildNodes[$this->protected_tags_counter] = '<!--' . $text . '-->';
-
-            $child = new DOMText('<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>');
-            $parentNode = $element->parentNode;
-            $parentNode->replaceChild($child, $element);
-
-            ++$this->protected_tags_counter;
         }
 
         if ($didRemoveComments) {
@@ -1137,11 +1116,9 @@ class HtmlMin implements HtmlMinInterface
      */
     private function restoreProtectedHtml(array $matches): string
     {
-        if (preg_match('/=(?:"|)?(\d+)(?:"|)?/', str_replace("'", "\a", (string) $matches['attributes']), $matchesInner) !== 1) {
-            return '';
-        }
-
-        return $this->protectedChildNodes[(int) $matchesInner[1]] ?? '';
+        return preg_match('/=(?:"|)?(\d+)(?:"|)?/', str_replace("'", "\a", (string) $matches['attributes']), $matchesInner) === 1
+            ? ($this->protectedChildNodes[(int) $matchesInner[1]] ?? '')
+            : '';
     }
 
     /**

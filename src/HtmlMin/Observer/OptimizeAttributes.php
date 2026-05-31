@@ -107,10 +107,9 @@ class OptimizeAttributes implements DomObserver
         $removeHttpsPrefix = $htmlMin->isDoRemoveHttpsPrefixFromAttributes();
         $keepHttpAndHttpsPrefixOnExternalAttributes = $htmlMin->isDoKeepHttpAndHttpsPrefixOnExternalAttributes();
 
+        // (attributes->length is already non-zero here, so getAllAttributes() is
+        // guaranteed non-empty.)
         $attributes = HtmlParser::getAllAttributes($element);
-        if ($attributes === []) {
-            return;
-        }
 
         $tagName = $element->tagName;
         $attributesAreSorted = $sortHtmlAttributes && self::isSortedAttributes($attributes);
@@ -204,7 +203,7 @@ class OptimizeAttributes implements DomObserver
             // -------------------------------------------------------------------------
 
             if ($sortCssClassNames && $attrName === 'class' && str_contains($attrValue, ' ')) {
-                $sortedAttrValue = $this->sortCssClassNames($attrName, $attrValue);
+                $sortedAttrValue = $this->sortCssClassNames($attrValue);
                 if ($sortedAttrValue !== $attrValue) {
                     $attrValue = $sortedAttrValue;
                     $didChange = true;
@@ -345,12 +344,8 @@ class OptimizeAttributes implements DomObserver
         return false;
     }
 
-    private function sortCssClassNames(int|string $attrName, string $attrValue): string
+    private function sortCssClassNames(string $attrValue): string
     {
-        if ($attrName !== 'class' || !$attrValue) {
-            return $attrValue;
-        }
-
         $classes = array_unique(
             explode(' ', $attrValue),
         );

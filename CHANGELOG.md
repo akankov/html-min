@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pre-check. Behaviour is unchanged — same stderr message and exit code 1 on
   failure. Raw PHP warnings on I/O failure are suppressed (the clean stderr line
   is the signal).
+- **Test suite now covers 100% of library lines** (up from ~93%). Reaching the
+  last few percent surfaced two small robustness touches (the `findAll()`
+  warning suppression and the `Cli` read simplification above) and several
+  defensive-guard simplifications; remaining unreachable type-guards were
+  restructured rather than ignored. The CI floors are ratcheted to match:
+  `MIN_LINE_COVERAGE` 90 → 100, and the Infection MSI / Covered-MSI floors
+  72 → 74. No public API or runtime behaviour change.
 
 ## [2.7.0] — 2026-05-30
 
