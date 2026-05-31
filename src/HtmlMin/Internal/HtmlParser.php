@@ -210,16 +210,6 @@ class HtmlParser
         $isDOMDocumentCreatedWithoutBodyWrapper = !str_contains($html, '<body ')
             && !str_contains($html, '<body>')  ;
 
-        // Trim content after a trailing </html>.
-        if (stripos($html, '</html>') !== false) {
-            if (
-                preg_match('/<\/html>(.*?)/suiU', $html, $matches_after_html)
-                && trim($matches_after_html[1]) !== ''
-            ) {
-                $html = str_replace($matches_after_html[0], $matches_after_html[1] . '</html>', $html);
-            }
-        }
-
         // Escape raw </script> markers inside script bodies and protect
         // special-script template contents.
         if (str_contains($html, '<script')) {

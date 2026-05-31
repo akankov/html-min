@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-circuits, `(string)` casts that never see `null`, and regex changes made
   unreachable by upstream `stripos()` guards — so they are intentionally not
   chased. No public API or runtime behaviour change.
+- **Removed a redundant `</html>`-trim preprocessing step** in `HtmlParser::parse()`.
+  libxml already pulls content after a closing `</html>` back into the body, so
+  the explicit regex + `str_replace` was a no-op for every well-formed and
+  single-`</html>` input (verified byte-identical on PHP 8.3/8.4/8.5). The only
+  observable difference is on pathological input with **multiple** `</html>`
+  markers (`</html>mid</html>end`), which now flattens to a single paragraph
+  (`<p>midend`) instead of two — both are arbitrary handling of malformed HTML;
+  the new behaviour is pinned by a characterization test. This also deletes a
+  cluster of equivalent mutants and a confusing regex. (The sibling
+  pre-`<!DOCTYPE>` junk strip was investigated too and is **not** redundant —
+  libxml keeps element junk before the doctype — so it stays.)
 
 ## [2.7.1] — 2026-05-31
 
