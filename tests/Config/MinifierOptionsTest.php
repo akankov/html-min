@@ -11,6 +11,46 @@ use PHPUnit\Framework\TestCase;
 
 final class MinifierOptionsTest extends TestCase
 {
+    public function testEveryConstructorDefaultValue(): void
+    {
+        // Pin every default — these match the pre-2.2 no-arg HtmlMin() behaviour
+        // and are a public contract. (A drifted default would change output for
+        // every `new MinifierOptions(...)` caller who relied on the old value.)
+        $o = new MinifierOptions();
+
+        self::assertTrue($o->optimizeViaHtmlDomParser);
+        self::assertTrue($o->optimizeAttributes);
+        self::assertTrue($o->removeComments);
+        self::assertFalse($o->removeWhitespaceAroundTags);
+        self::assertTrue($o->removeOmittedQuotes);
+        self::assertTrue($o->removeOmittedHtmlTags);
+        self::assertFalse($o->removeHttpPrefixFromAttributes);
+        self::assertFalse($o->removeHttpsPrefixFromAttributes);
+        self::assertFalse($o->keepHttpAndHttpsPrefixOnExternalAttributes);
+        self::assertTrue($o->sortCssClassNames);
+        self::assertTrue($o->sortHtmlAttributes);
+        self::assertTrue($o->removeDeprecatedScriptCharsetAttribute);
+        self::assertFalse($o->removeDefaultAttributes);
+        self::assertTrue($o->removeDeprecatedAnchorName);
+        self::assertTrue($o->removeDeprecatedTypeFromStylesheetLink);
+        self::assertTrue($o->removeDeprecatedTypeFromStyleAndLinkTag);
+        self::assertTrue($o->removeDefaultMediaTypeFromStyleAndLinkTag);
+        self::assertFalse($o->removeDefaultTypeFromButton);
+        self::assertTrue($o->removeDeprecatedTypeFromScriptTag);
+        self::assertTrue($o->removeValueFromEmptyInput);
+        self::assertTrue($o->removeEmptyAttributes);
+        self::assertTrue($o->sumUpWhitespace);
+        self::assertFalse($o->removeSpacesBetweenTags);
+        self::assertFalse($o->keepBrokenHtml);
+        self::assertFalse($o->minifyInlineCss);
+        self::assertFalse($o->minifyInlineJs);
+        self::assertSame([], $o->localDomains);
+        self::assertSame([], $o->specialHtmlCommentsStartingWith);
+        self::assertSame([], $o->specialHtmlCommentsEndingWith);
+        self::assertNull($o->specialScriptTags);
+        self::assertNull($o->templateLogicSyntaxInSpecialScriptTags);
+    }
+
     public function testDefaultsMatchNoArgHtmlMin(): void
     {
         // The no-op invariant: `new HtmlMin(MinifierOptions::defaults())`

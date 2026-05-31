@@ -302,4 +302,29 @@ final class InlineJsMinifierTest extends TestCase
     {
         self::assertSame($expected, (new InlineJsMinifier())->minify($input));
     }
+
+    /**
+     * Scanner EOF / newline termination, escapes, and graceful degradation on
+     * truncated input — every scan must terminate and emit the (unclosed) token
+     * verbatim rather than crash or loop.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideScannerTerminationCases(): iterable
+    {
+        yield 'block comment containing a newline' => ["a/*\n*/b", "a\nb"];
+        yield 'crlf line ending' => ["a\r\nb", "a\nb"];
+        yield 'regex after assignment operator' => ['x=/re/g;', 'x=/re/g;'];
+        yield 'string terminated by raw newline' => ["x='a\nb';", "x='a\nb';"];
+        yield 'regex terminated by raw newline' => ["r=/a\nb/;", "r=/a\nb/;"];
+        yield 'unterminated regex runs to end' => ['let r = /abc', 'let r = /abc'];
+        yield 'nested brace inside interpolation' => ['let s = `${ {x:1} }`;', 'let s = `${ {x:1} }`;'];
+        yield 'unterminated template runs to end' => ['let s = `abc', 'let s = `abc'];
+    }
+
+    #[DataProvider('provideScannerTerminationCases')]
+    public function testScannerTermination(string $input, string $expected): void
+    {
+        self::assertSame($expected, (new InlineJsMinifier())->minify($input));
+    }
 }
