@@ -320,6 +320,7 @@ final class InlineJsMinifierTest extends TestCase
         yield 'unterminated regex runs to end' => ['let r = /abc', 'let r = /abc'];
         yield 'nested brace inside interpolation' => ['let s = `${ {x:1} }`;', 'let s = `${ {x:1} }`;'];
         yield 'unterminated template runs to end' => ['let s = `abc', 'let s = `abc'];
+        yield 'regex at start of input' => ['/abc/.test(x);', '/abc/.test(x);'];
     }
 
     #[DataProvider('provideScannerTerminationCases')]
