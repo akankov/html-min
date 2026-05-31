@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`HtmlParser::findAll()` no longer leaks a PHP warning** for an unsupported
+  selector (e.g. a CSS class like `.foo`, which has no XPath translation). The
+  malformed-query case already returned an empty array; the raw `DOMXPath`
+  warning is now suppressed so it stays a clean empty result.
 - **CLI input reading simplified.** `Cli::readInput()` now relies on a single
   `@file_get_contents()` (which already reports missing / unreadable / directory
   paths via `false`) instead of a redundant `is_file()`/`is_readable()`

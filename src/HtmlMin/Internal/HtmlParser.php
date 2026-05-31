@@ -533,7 +533,10 @@ class HtmlParser
         // Always pass the root explicitly; with null context, PHP's DOMXPath
         // treats the document ELEMENT (not the document itself) as implicit
         // context, which makes ".//*" miss the root element.
-        $nodes = $xpath->query($query, $root);
+        // @ — an unsupported selector (e.g. a CSS class) yields a malformed
+        // xpath; the `=== false` guard below turns that into an empty result
+        // rather than a leaked warning.
+        $nodes = @$xpath->query($query, $root);
 
         if ($nodes === false) {
             return [];
@@ -591,14 +594,14 @@ class HtmlParser
         libxml_clear_errors();
         libxml_use_internal_errors($previous);
 
+        // The wrapper element is virtually always present; guard positively so
+        // the never-taken null path is not an uncoverable statement.
         $root = $fragment->getElementsByTagName('htmlmin-root')->item(0);
-        if ($root === null) {
-            return;
-        }
-
-        foreach (iterator_to_array($root->childNodes) as $child) {
-            $imported = $doc->importNode($child, true);
-            $el->appendChild($imported);
+        if ($root !== null) {
+            foreach (iterator_to_array($root->childNodes) as $child) {
+                $imported = $doc->importNode($child, true);
+                $el->appendChild($imported);
+            }
         }
     }
 
