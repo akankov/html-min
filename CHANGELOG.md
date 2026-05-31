@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] — 2026-05-31
+
+Test-effectiveness and parser-cleanup release. Mutation score is raised to
+**77.4%** (line coverage stays 100%) by pinning the _scoping_ of the
+attribute-removal rules, and a redundant `</html>`-trim preprocessing step is
+removed from the parser. The version is a **minor** bump rather than a patch
+because that cleanup changes observable output for one class of **malformed**
+input (multiple `</html>` markers) — well-formed documents are unaffected.
+Released from PRs
+[#35](https://github.com/akankov/html-min/pull/35)–[#36](https://github.com/akankov/html-min/pull/36).
+
 ### Changed
 
 - **Mutation score raised to ~77%** (MSI 76.3% → 76.8%) by adding behavioral
