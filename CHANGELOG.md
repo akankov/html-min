@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.1] — 2026-05-31
+
+Test-hardening and robustness release. The library test suite now covers **100%
+of lines** (up from ~93%) with the CI floors ratcheted to match, and two small
+warning-suppression / dead-guard touches fell out of the coverage work. No
+public API or runtime behaviour change. Released from PRs
+[#31](https://github.com/akankov/html-min/pull/31)–[#33](https://github.com/akankov/html-min/pull/33).
+
 ### Changed
 
 - **`HtmlParser::findAll()` no longer leaks a PHP warning** for an unsupported
