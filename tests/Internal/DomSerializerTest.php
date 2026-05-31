@@ -25,6 +25,32 @@ final class DomSerializerTest extends TestCase
         return $doc;
     }
 
+    public function testSingleSpaceBetweenInlineElementsIsPreservedInBody(): void
+    {
+        // A single significant space between two inline elements in the body is
+        // kept (whitespace-around-tags removal is off by default).
+        $doc = self::bodyDoc('<span>a</span> <span>b</span>');
+        $serializer = new DomSerializer(new HtmlMin(), new OptionalTagOmission());
+
+        self::assertSame('<body><span>a</span> <span>b</span>', $serializer->toString($doc));
+    }
+
+    public function testWhitespaceBetweenHeadAndBodyElementsDiffers(): void
+    {
+        // The serializer suppresses inter-element whitespace inside <head>
+        // (never significant) but preserves a single space between inline
+        // elements in <body>. This is the parent === 'head' branch in toString().
+        $html = '<html><head><meta name=a> <meta name=b></head>'
+            . '<body><span>x</span> <span>y</span></body></html>';
+
+        $out = (new HtmlMin())->minify($html);
+
+        // No space survives between the two <meta> elements in <head>...
+        self::assertStringContainsString('<meta name=a><meta name=b>', $out);
+        // ...but the single space between the two body spans is kept.
+        self::assertStringContainsString('<span>x</span> <span>y</span>', $out);
+    }
+
     public function testSerializesElementsAttributesAndText(): void
     {
         $doc = self::bodyDoc('<p class="lead">hi</p>');

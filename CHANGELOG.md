@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Mutation score raised to ~77%** (MSI 76.3% → 76.8%) by adding behavioral
+  tests that pin the _scoping_ of the deprecated/default-attribute removals —
+  e.g. `type=text/css` is stripped only on `rel=stylesheet` links (not
+  `rel=preload`), and `value=""` only on `<input type=text>` (not other input
+  types). The Infection floor is ratcheted 74 → 75 to match (a ~1.75pp buffer is
+  kept for timeout jitter). Audit note: the bulk of the remaining surviving
+  mutants are genuinely equivalent — internal cache keys, performance
+  short-circuits, `(string)` casts that never see `null`, and regex changes made
+  unreachable by upstream `stripos()` guards — so they are intentionally not
+  chased. No public API or runtime behaviour change.
+
 ## [2.7.1] — 2026-05-31
 
 Test-hardening and robustness release. The library test suite now covers **100%

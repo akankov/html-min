@@ -369,6 +369,19 @@ final class HtmlMinAttributeTest extends TestCase
         self::assertSame($expected, $htmlMin->minify($html));
     }
 
+    public function testRelativeLinksTreatDomainDotsAsLiteral(): void
+    {
+        // The dots in a local domain must match a literal '.', not "any
+        // character". A host that differs only where a dot sits (wwwIexampleIcom)
+        // is a different host and must NOT be rewritten to a relative URL.
+        $html = '<a href="http://wwwiexampleicom/path">x</a>';
+        $expected = '<a href=http://wwwiexampleicom/path>x</a>';
+
+        $htmlMin = new HtmlMin();
+        $htmlMin->doMakeSameDomainsLinksRelative(['www.example.com']);
+        self::assertSame($expected, $htmlMin->minify($html));
+    }
+
     public function testHttpPrefixRemovalOnlyAffectsLeadingScheme(): void
     {
         // mid-string http:// inside a query parameter must not be touched
@@ -506,6 +519,7 @@ final class HtmlMinAttributeTest extends TestCase
             'link type=text/css removed'    => ['<link type="text/css" href="a.css" rel="stylesheet">', '<link href=a.css rel=stylesheet>'],
             'style type=text/css removed'   => ['<style type="text/css">a{}</style>', '<style>a{}</style>'],
             'link type non-css kept'        => ['<link type="text/plain" href="a.css" rel="stylesheet">', '<link href=a.css rel=stylesheet type=text/plain>'],
+            'type on non-link/style kept'   => ['<div type="text/css">x</div>', '<div type=text/css>x</div>'],
         ];
     }
 
@@ -535,6 +549,42 @@ final class HtmlMinAttributeTest extends TestCase
         self::assertSame(
             '<button>x</button>',
             (new HtmlMin())->doRemoveDefaultTypeFromButton(true)->minify('<button type="submit">x</button>'),
+        );
+    }
+
+    public function testStylesheetLinkTypeRemovalIsScopedToStylesheetRel(): void
+    {
+        // Isolate the stylesheet-link rule from the broader style/link rule so
+        // its rel-scoping is observable: type=text/css is dropped only when the
+        // link actually declares rel=stylesheet, never for other rel values.
+        $htmlMin = (new HtmlMin())
+            ->doRemoveDeprecatedTypeFromStyleAndLinkTag(false)
+            ->doRemoveDeprecatedTypeFromStylesheetLink(true);
+
+        self::assertSame(
+            '<link href=a.css rel=stylesheet>',
+            $htmlMin->minify('<link type="text/css" href="a.css" rel="stylesheet">'),
+        );
+
+        // rel=preload is not a stylesheet — the type must survive.
+        self::assertSame(
+            '<link href=a.css rel=preload type=text/css>',
+            $htmlMin->minify('<link type="text/css" href="a.css" rel="preload">'),
+        );
+    }
+
+    public function testEmptyInputValueRemovalIsScopedToTextType(): void
+    {
+        // value="" is stripped only for <input type=text>; for other input
+        // types an empty value can be meaningful and must be kept.
+        self::assertSame(
+            '<input type=text>',
+            (new HtmlMin())->minify('<input type="text" value="">'),
+        );
+
+        self::assertSame(
+            '<input type=hidden value="">',
+            (new HtmlMin())->minify('<input type="hidden" value="">'),
         );
     }
 
