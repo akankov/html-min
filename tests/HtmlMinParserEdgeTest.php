@@ -38,8 +38,28 @@ final class HtmlMinParserEdgeTest extends TestCase
 
     public function testContentAfterClosingHtmlIsRetained(): void
     {
+        // libxml itself pulls trailing content back into the body — no explicit
+        // preprocessing needed (the former </html>-trim was redundant here).
         $out = (new HtmlMin())->minify('<!DOCTYPE html><html><body>x</body></html>TAIL');
 
         self::assertSame('<!DOCTYPE html><html><body>x<p>TAIL', $out);
+    }
+
+    public function testTrailingElementAfterClosingHtmlIsRetained(): void
+    {
+        $out = (new HtmlMin())->minify('<!DOCTYPE html><html><body>x</body></html><div>after</div>');
+
+        self::assertSame('<!DOCTYPE html><html><body>x<div>after</div>', $out);
+    }
+
+    public function testMultipleClosingHtmlTagsAreFlattenedByLibxml(): void
+    {
+        // Pathological malformed input with two </html> markers. Without the
+        // former </html>-trim preprocessing, libxml flattens the trailing text
+        // runs into a single paragraph instead of two. Both are arbitrary
+        // handling of garbage; this pins the current (libxml-native) behavior.
+        $out = (new HtmlMin())->minify('<!DOCTYPE html><html><body>x</body></html>mid</html>end');
+
+        self::assertSame('<!DOCTYPE html><html><body>x<p>midend', $out);
     }
 }
