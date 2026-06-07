@@ -31,7 +31,7 @@ final class OptionalTagOmissionTest extends TestCase
      * current behaviour (quirks included) so the rule-dispatch refactor is
      * provably equivalent. `$index` selects the nth element of `$tag`.
      */
-    #[DataProvider('conditionalEndTagCases')]
+    #[DataProvider('provideConditionalEndTagOmissionCases')]
     public function testConditionalEndTagOmission(string $html, string $tag, int $index, bool $expected): void
     {
         $doc = self::loadDoc($html);
@@ -44,7 +44,7 @@ final class OptionalTagOmissionTest extends TestCase
     /**
      * @return iterable<string, array{string, string, int, bool}>
      */
-    public static function conditionalEndTagCases(): iterable
+    public static function provideConditionalEndTagOmissionCases(): iterable
     {
         // li — followed by li or end of parent.
         yield 'li before li'        => ['<ul><li>a</li><li>b</li></ul>', 'li', 0, true];
