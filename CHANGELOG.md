@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Internal: `OptionalTagOmission` rule-dispatch refactor.** The ~280-line
+  conditional end-tag boolean is replaced by a per-tag dispatch with small,
+  independently-readable rule helpers. No behaviour change — the per-tag truth
+  table (quirks included, e.g. `dt` grouped with `dd`) is locked by new
+  characterization tests in `OptionalTagOmissionTest`.
+
 ## [2.8.1] — 2026-06-07
 
 Internal hardening of the libxml entity-preserving placeholder layer. No change

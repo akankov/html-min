@@ -13,8 +13,7 @@ use DOMText;
  *
  * Decides whether an element's closing tag may be omitted per the WHATWG
  * tag-omission spec (https://html.spec.whatwg.org/multipage/syntax.html#syntax-tag-omission).
- * Extracted from HtmlMin so the 280-line rule set lives — and can be tested —
- * on its own.
+ * Extracted from HtmlMin so the rule set lives — and can be tested — on its own.
  */
 class OptionalTagOmission
 {
@@ -49,6 +48,69 @@ class OptionalTagOmission
         'dt',
         'option',
         'p',
+    ];
+
+    /**
+     * Elements a `<source>` may sit in for its end tag to be omittable.
+     *
+     * @var string[]
+     */
+    private const array SOURCE_PARENTS = [
+        'audio',
+        'video',
+        'picture',
+        'source',
+    ];
+
+    /**
+     * Block-level elements that, when they immediately follow a `<p>`, allow the
+     * `<p>` end tag to be omitted.
+     *
+     * @var string[]
+     */
+    private const array P_FOLLOWED_BY = [
+        'address',
+        'article',
+        'aside',
+        'blockquote',
+        'dir',
+        'div',
+        'dl',
+        'fieldset',
+        'footer',
+        'form',
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6',
+        'header',
+        'hgroup',
+        'hr',
+        'menu',
+        'nav',
+        'ol',
+        'p',
+        'pre',
+        'section',
+        'table',
+        'ul',
+    ];
+
+    /**
+     * Parents in which a trailing `<p>` (no following sibling) keeps its end tag.
+     *
+     * @var string[]
+     */
+    private const array P_TRAILING_DISALLOWED_PARENTS = [
+        'a',
+        'audio',
+        'del',
+        'ins',
+        'map',
+        'noscript',
+        'video',
     ];
 
     /**
@@ -93,255 +155,64 @@ class OptionalTagOmission
             return $this->cache[$cache_key];
         }
 
-        // https://html.spec.whatwg.org/multipage/syntax.html#syntax-tag-omission
-
-        // Implemented:
-        //
-        // A <p> element's end tag may be omitted if the p element is immediately followed by an address, article, aside, blockquote, details, div, dl, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, main, menu, nav, ol, p, pre, section, table, or ul element, or if there is no more content in the parent element and the parent element is an HTML element that is not an a, audio, del, ins, map, noscript, or video element, or an autonomous custom element.
-        // An <li> element's end tag may be omitted if the li element is immediately followed by another li element or if there is no more content in the parent element.
-        // A <td> element's end tag may be omitted if the td element is immediately followed by a td or th element, or if there is no more content in the parent element.
-        // An <option> element's end tag may be omitted if the option element is immediately followed by another option element, or if it is immediately followed by an optgroup element, or if there is no more content in the parent element.
-        // A <tr> element's end tag may be omitted if the tr element is immediately followed by another tr element, or if there is no more content in the parent element.
-        // A <th> element's end tag may be omitted if the th element is immediately followed by a td or th element, or if there is no more content in the parent element.
-        // A <dt> element's end tag may be omitted if the dt element is immediately followed by another dt element or a dd element.
-        // A <dd> element's end tag may be omitted if the dd element is immediately followed by another dd element or a dt element, or if there is no more content in the parent element.
-        // An <rp> element's end tag may be omitted if the rp element is immediately followed by an rt or rp element, or if there is no more content in the parent element.
-        // An <optgroup> element's end tag may be omitted if the optgroup element is immediately followed by another optgroup element, or if there is no more content in the parent element.
-
-        /**
-         * @noinspection TodoComment
-         *
-         * TODO: Not Implemented
-         */
-        //
-        // <html> may be omitted if first thing inside is not comment
-        // <head> may be omitted if first thing inside is an element
-        // <body> may be omitted if first thing inside is not space, comment, <meta>, <link>, <script>, <style> or <template>
-        // <colgroup> may be omitted if first thing inside is <col>
-        // <tbody> may be omitted if first thing inside is <tr>
-        // A <colgroup> element's start tag may be omitted if the first thing inside the colgroup element is a col element, and if the element is not immediately preceded by another colgroup element whose end tag has been omitted. (It can't be omitted if the element is empty.)
-        // A <colgroup> element's end tag may be omitted if the colgroup element is not immediately followed by ASCII whitespace or a comment.
-        // A <caption> element's end tag may be omitted if the caption element is not immediately followed by ASCII whitespace or a comment.
-        // A <thead> element's end tag may be omitted if the thead element is immediately followed by a tbody or tfoot element.
-        // A <tbody> element's start tag may be omitted if the first thing inside the tbody element is a tr element, and if the element is not immediately preceded by a tbody, thead, or tfoot element whose end tag has been omitted. (It can't be omitted if the element is empty.)
-        // A <tbody> element's end tag may be omitted if the tbody element is immediately followed by a tbody or tfoot element, or if there is no more content in the parent element.
-        // A <tfoot> element's end tag may be omitted if there is no more content in the parent element.
-        //
-        // <-- However, a start tag must never be omitted if it has any attributes.
-
-        $result = (
-            $tag_name === 'li'
-                   &&
-                   (
-                       $nextSibling === null
-                       ||
-                       (
-                           $nextSibling instanceof DOMElement
-                           &&
-                           $nextSibling->tagName === 'li'
-                       )
-                   )
-        )
-               ||
-               (
-                   $tag_name === 'optgroup'
-                   &&
-                   (
-                       $nextSibling === null
-                       ||
-                       (
-                           $nextSibling instanceof DOMElement
-                           &&
-                           $nextSibling->tagName === 'optgroup'
-                       )
-                   )
-               )
-               ||
-               (
-                   $tag_name === 'rp'
-                   &&
-                   (
-                       $nextSibling === null
-                       ||
-                       (
-                           $nextSibling instanceof DOMElement
-                           &&
-                           (
-                               $nextSibling->tagName === 'rp'
-                               ||
-                               $nextSibling->tagName === 'rt'
-                           )
-                       )
-                   )
-               )
-               ||
-               (
-                   $tag_name === 'tr'
-                   &&
-                   (
-                       $nextSibling === null
-                       ||
-                       (
-                           $nextSibling instanceof DOMElement
-                           &&
-                           $nextSibling->tagName === 'tr'
-                       )
-                   )
-               )
-               ||
-               (
-                   $tag_name === 'source'
-                   &&
-                   (
-                       $parent_tag_name === 'audio'
-                       ||
-                       $parent_tag_name === 'video'
-                       ||
-                       $parent_tag_name === 'picture'
-                       ||
-                       $parent_tag_name === 'source'
-                   )
-                   &&
-                   (
-                       $nextSibling === null
-                       ||
-                       (
-                           $nextSibling instanceof DOMElement
-                           &&
-                           $nextSibling->tagName === 'source'
-                       )
-                   )
-               )
-               ||
-               (
-                   (
-                       $tag_name === 'td'
-                       ||
-                       $tag_name === 'th'
-                   )
-                   &&
-                   (
-                       $nextSibling === null
-                       ||
-                       (
-                           $nextSibling instanceof DOMElement
-                           &&
-                           (
-                               $nextSibling->tagName === 'td'
-                               ||
-                               $nextSibling->tagName === 'th'
-                           )
-                       )
-                   )
-               )
-               ||
-               (
-                   (
-                       $tag_name === 'dd'
-                       ||
-                       $tag_name === 'dt'
-                   )
-                   &&
-                   (
-                       $nextSibling === null
-                       ||
-                       (
-                           $nextSibling instanceof DOMElement
-                           &&
-                           (
-                               $nextSibling->tagName === 'dd'
-                               ||
-                               $nextSibling->tagName === 'dt'
-                           )
-                       )
-                   )
-               )
-               ||
-               (
-                   $tag_name === 'option'
-                   &&
-                   (
-                       $nextSibling === null
-                       ||
-                       (
-                           $nextSibling instanceof DOMElement
-                           &&
-                           (
-                               $nextSibling->tagName === 'option'
-                               ||
-                               $nextSibling->tagName === 'optgroup'
-                           )
-                       )
-                   )
-               )
-               ||
-               (
-                   $tag_name === 'p'
-                   &&
-                   (
-                       (
-                           $nextSibling === null
-                           &&
-                           $node->parentNode !== null
-                           &&
-                           !\in_array(
-                               $node->parentNode->nodeName,
-                               [
-                                   'a',
-                                   'audio',
-                                   'del',
-                                   'ins',
-                                   'map',
-                                   'noscript',
-                                   'video',
-                               ],
-                               true,
-                           )
-                       )
-                       ||
-                       (
-                           $nextSibling instanceof DOMElement
-                           &&
-                           \in_array(
-                               $nextSibling->tagName,
-                               [
-                                   'address',
-                                   'article',
-                                   'aside',
-                                   'blockquote',
-                                   'dir',
-                                   'div',
-                                   'dl',
-                                   'fieldset',
-                                   'footer',
-                                   'form',
-                                   'h1',
-                                   'h2',
-                                   'h3',
-                                   'h4',
-                                   'h5',
-                                   'h6',
-                                   'header',
-                                   'hgroup',
-                                   'hr',
-                                   'menu',
-                                   'nav',
-                                   'ol',
-                                   'p',
-                                   'pre',
-                                   'section',
-                                   'table',
-                                   'ul',
-                               ],
-                               true,
-                           )
-                       )
-                   )
-               );
+        $result = $this->conditionalEndTagOptional($tag_name, $node, $parent_tag_name, $nextSibling);
 
         $this->cache[$cache_key] = $result;
 
         return $result;
+    }
+
+    /**
+     * Per-tag conditional end-tag rules. The caller guarantees `$tag` is one of
+     * {@see CONDITIONAL_END_TAGS}, so the match is exhaustive in practice (hence
+     * no default arm — adding one would be dead code under the 100% line floor).
+     *
+     * Spec note: `dt` is grouped with `dd` (both treated as omittable at end of
+     * parent). That is a deliberate, output-safe deviation kept verbatim from the
+     * original boolean and locked by OptionalTagOmissionTest — the spec only lets
+     * `dt` omit when followed by `dt`/`dd`, but omitting it at end-of-parent still
+     * produces valid, equivalently-parsed HTML.
+     */
+    private function conditionalEndTagOptional(string $tag, DOMNode $node, ?string $parentTag, ?DOMNode $next): bool
+    {
+        // @phpstan-ignore match.unhandled (exhaustive over CONDITIONAL_END_TAGS)
+        return match ($tag) {
+            'li'       => self::followedByOrEndOfParent($next, 'li'),
+            'optgroup' => self::followedByOrEndOfParent($next, 'optgroup'),
+            'rp'       => self::followedByOrEndOfParent($next, 'rp', 'rt'),
+            'tr'       => self::followedByOrEndOfParent($next, 'tr'),
+            'td', 'th' => self::followedByOrEndOfParent($next, 'td', 'th'),
+            'dd', 'dt' => self::followedByOrEndOfParent($next, 'dd', 'dt'),
+            'option'   => self::followedByOrEndOfParent($next, 'option', 'optgroup'),
+            'source'   => \in_array($parentTag, self::SOURCE_PARENTS, true)
+                          && self::followedByOrEndOfParent($next, 'source'),
+            'p'        => self::pEndTagOptional($node, $next),
+        };
+    }
+
+    /**
+     * The shared "followed by one of $tags, or no more content in the parent"
+     * shape used by most conditional end-tag rules.
+     */
+    private static function followedByOrEndOfParent(?DOMNode $next, string ...$tags): bool
+    {
+        if ($next === null) {
+            return true;
+        }
+
+        return $next instanceof DOMElement && \in_array($next->tagName, $tags, true);
+    }
+
+    private static function pEndTagOptional(DOMNode $node, ?DOMNode $next): bool
+    {
+        if ($next === null) {
+            $parent = $node->parentNode;
+
+            return $parent !== null
+                   && !\in_array($parent->nodeName, self::P_TRAILING_DISALLOWED_PARENTS, true);
+        }
+
+        return $next instanceof DOMElement && \in_array($next->tagName, self::P_FOLLOWED_BY, true);
     }
 
     /**
