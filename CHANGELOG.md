@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.1] — 2026-06-07
+
 Internal hardening of the libxml entity-preserving placeholder layer. No change
 to public API or to the minified output of any input.
 
