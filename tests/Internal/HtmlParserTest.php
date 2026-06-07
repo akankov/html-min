@@ -12,6 +12,7 @@ use const LIBXML_HTML_NODEFDTD;
 use const LIBXML_HTML_NOIMPLIED;
 
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
 
 final class HtmlParserTest extends TestCase
 {
@@ -183,11 +184,27 @@ final class HtmlParserTest extends TestCase
         self::assertStringContainsString($adversarial, $restored);
     }
 
+    /**
+     * The entity-restore map is built once per run and reused for the rest of it
+     * (production calls it once via HtmlMin, but it must stay cached so the
+     * per-run nonce reset doesn't turn every call into a rebuild). Two calls
+     * without an intervening reset exercise the cached-return path.
+     */
+    public function testEntityRestoreMapIsCachedWithinARun(): void
+    {
+        HtmlParser::reset();
+
+        $first = HtmlParser::putReplacedBackToPreserveHtmlEntities('plain text');
+        $second = HtmlParser::putReplacedBackToPreserveHtmlEntities('plain text');
+
+        self::assertSame($first, $second);
+    }
+
     private static function readPlaceholderNonce(): ?string
     {
-        $property = new \ReflectionProperty(HtmlParser::class, 'placeholderNonce');
+        $property = new ReflectionProperty(HtmlParser::class, 'placeholderNonce');
         $value = $property->getValue();
 
-        return is_string($value) ? $value : null;
+        return \is_string($value) ? $value : null;
     }
 }
