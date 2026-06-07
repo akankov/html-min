@@ -12,10 +12,10 @@
     text: "build/infection/infection.log",
     summary: "build/infection/summary.log",
     // Publishes the MSI to the Stryker Mutator dashboard for the README badge.
-    // Only uploads when STRYKER_DASHBOARD_API_KEY is set (CI master builds);
+    // Only uploads when STRYKER_DASHBOARD_API_KEY is set (CI main builds);
     // a no-op locally and on forks, so it never breaks `make infection`.
     stryker: {
-      badge: "master",
+      badge: "main",
     },
   },
   mutators: {
