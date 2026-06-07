@@ -116,9 +116,10 @@ class HtmlParser
     private const string AMP_PLACEHOLDER_SEARCH = '<html ⚡';
 
     /**
-     * Per-process random nonce embedded in every placeholder so adversarial
-     * input cannot guess (and thus cannot collide with) the tokens the restore
-     * pass rewrites. Stable for the process lifetime; the maps below cache off it.
+     * Per-run random nonce embedded in every placeholder so adversarial input
+     * cannot guess (and thus cannot collide with) the tokens the restore pass
+     * rewrites. {@see reset()} clears it (and the maps that cache off it) at the
+     * start of each minify() run, so tokens are never reused across runs.
      */
     private static ?string $placeholderNonce = null;
 
@@ -155,14 +156,27 @@ class HtmlParser
      *
      * @var array{orig: string[], tmp: string[]}
      */
-    public static array $brokenHtmlMap = ['orig' => [], 'tmp' => []];
+    private static array $brokenHtmlMap = ['orig' => [], 'tmp' => []];
 
     /**
      * Reset all cross-call state. Call once per minify() run.
+     *
+     * The placeholder nonce — and every cache derived from it — is cleared so
+     * each run gets a fresh, unguessable nonce instead of reusing one for the
+     * whole process. All five must be cleared together: masking writes
+     * new-nonce placeholders while restoration reads {@see $globalEntityMap} /
+     * {@see $entityRestoreMap}, so leaving any derived cache stale would
+     * silently corrupt output. Safe because the placeholder lifecycle is fully
+     * contained within one run (reset → parse/replace → restore).
      */
     public static function reset(): void
     {
         self::$brokenHtmlMap = ['orig' => [], 'tmp' => []];
+        self::$placeholderNonce = null;
+        self::$urlCharPlaceholders = null;
+        self::$entityCharPlaceholders = null;
+        self::$globalEntityMap = null;
+        self::$entityRestoreMap = null;
     }
 
     /**

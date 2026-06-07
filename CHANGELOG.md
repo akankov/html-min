@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Internal hardening of the libxml entity-preserving placeholder layer. No change
+to public API or to the minified output of any input.
+
+### Changed
+
+- **Per-run placeholder nonce.** `HtmlParser::reset()` now regenerates the
+  random placeholder nonce (and every cache derived from it) at the start of each
+  minify() run instead of reusing one nonce for the whole process. This keeps the
+  unguessable tokens from being reused across calls — defence-in-depth for
+  long-lived / worker runtimes (Swoole, FrankenPHP, ReactPHP). All five
+  nonce-derived caches are cleared together so masking and restoration never
+  mismatch.
+- **`HtmlParser::$brokenHtmlMap` is now private.** It was `public static` but is
+  only used internally; encapsulating it prevents external code from corrupting
+  the cross-call replacement table.
+
 ## [2.8.0] — 2026-05-31
 
 Test-effectiveness and parser-cleanup release. Mutation score is raised to
