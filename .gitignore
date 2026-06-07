@@ -1,26 +1,26 @@
 # composer
-vendor
-composer.lock
+/vendor/
+/composer.lock
 
 # php (phpunit)
-build/
-.phpunit.result.cache
+/build/
+/.phpunit.result.cache
 
 # infection drops a 0-byte tempnam('min…') file in CWD on each run
 /min*
 
 # phar build output
-dist/
+/dist/
 
 # benchmark baseline snapshot (release-scoped, written by `make bench-baseline`)
-baseline.md
+/baseline.md
 
-.php-cs-fixer.cache
-.phpstan.cache
-.phpunit.cache
+/.php-cs-fixer.cache
+/.phpstan.cache/
+/.phpunit.cache/
 
 # ide
-.idea
-.phan/cache
-CLAUDE.md
-AGENTS.md
+/.idea/
+/.phan/cache/
+/CLAUDE.md
+/AGENTS.md
