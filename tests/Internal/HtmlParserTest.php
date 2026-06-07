@@ -144,4 +144,50 @@ final class HtmlParserTest extends TestCase
 
         self::assertSame(0, $el->childNodes->length);
     }
+
+    /**
+     * reset() runs once at the start of every minify() run; it must hand each
+     * run a fresh placeholder nonce so the unguessable tokens are never reused
+     * across calls (defence-in-depth for long-lived / worker runtimes). Reading
+     * the private static is the only way to observe this — the nonce never
+     * appears in output because the restore pass always removes it.
+     */
+    public function testResetRegeneratesPlaceholderNoncePerRun(): void
+    {
+        HtmlParser::reset();
+        HtmlParser::replaceToPreserveHtmlEntities('a & b'); // forces nonce generation
+        $first = self::readPlaceholderNonce();
+
+        HtmlParser::reset();
+        HtmlParser::replaceToPreserveHtmlEntities('a & b');
+        $second = self::readPlaceholderNonce();
+
+        self::assertNotNull($first);
+        self::assertNotNull($second);
+        self::assertNotSame($first, $second);
+    }
+
+    /**
+     * Because the nonce is random per run, input that literally contains a
+     * placeholder-shaped token can never collide with the live placeholders, so
+     * the restore pass must leave it untouched rather than rewriting it.
+     */
+    public function testAdversarialPlaceholderShapedInputSurvivesRoundTrip(): void
+    {
+        HtmlParser::reset();
+
+        $adversarial = '____HTMLMIN_deadbeef00_AT____change';
+        $masked = HtmlParser::replaceToPreserveHtmlEntities($adversarial);
+        $restored = HtmlParser::putReplacedBackToPreserveHtmlEntities($masked);
+
+        self::assertStringContainsString($adversarial, $restored);
+    }
+
+    private static function readPlaceholderNonce(): ?string
+    {
+        $property = new \ReflectionProperty(HtmlParser::class, 'placeholderNonce');
+        $value = $property->getValue();
+
+        return is_string($value) ? $value : null;
+    }
 }
