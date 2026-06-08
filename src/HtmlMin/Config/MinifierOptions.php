@@ -56,6 +56,12 @@ class MinifierOptions
         public readonly array $specialHtmlCommentsEndingWith = [],
         public readonly ?array $specialScriptTags = null,
         public readonly ?array $templateLogicSyntaxInSpecialScriptTags = null,
+        // Opt-in: also omit the <html>/<head>/<body> START tags where the spec
+        // allows. Off by default — it is far more aggressive than end-tag
+        // omission and can reduce an effectively-empty document to an empty
+        // string. Requires removeOmittedHtmlTags' usual HTML5 (non-HTML4/XHTML)
+        // conditions to apply.
+        public readonly bool $removeOmittedHtmlStartTags = false,
     ) {
     }
 

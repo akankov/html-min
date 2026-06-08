@@ -178,6 +178,120 @@ final class OptionalTagOmissionTest extends TestCase
         ];
     }
 
+    /**
+     * isStartOptional truth table for html/head/body across first-child kinds
+     * and the attribute guard. Built with explicit DOM nodes so the first child
+     * is deterministic.
+     *
+     * @param 'html'|'head'|'body'|'div'              $tag
+     * @param 'none'|'comment'|'element'|'script'|'whitespace'|'text' $firstChild
+     */
+    #[DataProvider('provideStartTagOmittableCases')]
+    public function testStartTagOmittable(string $tag, string $firstChild, bool $withAttribute, bool $expected): void
+    {
+        $doc = new DOMDocument();
+        $element = $doc->createElement($tag);
+        if ($withAttribute) {
+            $element->setAttribute('id', 'x');
+        }
+        $child = match ($firstChild) {
+            'comment'    => $doc->createComment('c'),
+            'element'    => $doc->createElement('div'),
+            'script'     => $doc->createElement('script'),
+            'whitespace' => $doc->createTextNode(' x'),
+            'text'       => $doc->createTextNode('x'),
+            default      => null,
+        };
+        if ($child !== null) {
+            $element->appendChild($child);
+        }
+        $doc->appendChild($element);
+
+        self::assertSame($expected, (new OptionalTagOmission())->isStartOptional($element));
+    }
+
+    /**
+     * @return iterable<string, array{string, string, bool, bool}>
+     */
+    public static function provideStartTagOmittableCases(): iterable
+    {
+        // html — omittable unless first child is a comment; never with attributes.
+        yield 'html empty'        => ['html', 'none', false, true];
+        yield 'html comment'      => ['html', 'comment', false, false];
+        yield 'html element'      => ['html', 'element', false, true];
+        yield 'html text'         => ['html', 'text', false, true];
+        yield 'html with attr'    => ['html', 'element', true, false];
+
+        // head — omittable when empty or when first child is an element.
+        yield 'head empty'        => ['head', 'none', false, true];
+        yield 'head element'      => ['head', 'element', false, true];
+        yield 'head text'         => ['head', 'text', false, false];
+        yield 'head whitespace'   => ['head', 'whitespace', false, false];
+        yield 'head with attr'    => ['head', 'element', true, false];
+
+        // body — omittable when empty, or first child is neither whitespace nor a
+        // comment nor a meta/link/script/style/template element.
+        yield 'body empty'        => ['body', 'none', false, true];
+        yield 'body comment'      => ['body', 'comment', false, false];
+        yield 'body whitespace'   => ['body', 'whitespace', false, false];
+        yield 'body text'         => ['body', 'text', false, true];
+        yield 'body element'      => ['body', 'element', false, true];
+        yield 'body script first' => ['body', 'script', false, false];
+        yield 'body with attr'    => ['body', 'element', true, false];
+
+        // non-structural tag — never start-optional.
+        yield 'div'               => ['div', 'element', false, false];
+    }
+
+    public function testStartTagOmissionIsOffByDefault(): void
+    {
+        $output = (new HtmlMin())->minify(
+            '<!doctype html><html><head><title>x</title></head><body><p>hi</p></body></html>',
+        );
+
+        self::assertStringContainsString('<html>', $output);
+        self::assertStringContainsString('<head>', $output);
+        self::assertStringContainsString('<body>', $output);
+    }
+
+    public function testStartTagOmissionWhenEnabled(): void
+    {
+        $minifier = (new HtmlMin())->doRemoveOmittedHtmlStartTags(true);
+        $output = $minifier->minify(
+            '<!doctype html><html><head><title>x</title></head><body><p>hi</p></body></html>',
+        );
+
+        self::assertStringNotContainsString('<html>', $output);
+        self::assertStringNotContainsString('<head>', $output);
+        self::assertStringNotContainsString('<body>', $output);
+        self::assertStringContainsString('<title>x</title>', $output);
+        self::assertStringContainsString('<p>hi', $output);
+    }
+
+    public function testStartTagWithAttributesKeptWhenEnabled(): void
+    {
+        $minifier = (new HtmlMin())->doRemoveOmittedHtmlStartTags(true);
+        $output = $minifier->minify(
+            '<!doctype html><html lang="en"><head><title>x</title></head><body><script>var a=1</script><p>hi</p></body></html>',
+        );
+
+        // <html> kept (has lang), <body> kept (first child is a script element).
+        self::assertStringContainsString('<html lang=en>', $output);
+        self::assertStringContainsString('<body>', $output);
+        self::assertStringNotContainsString('<head>', $output);
+    }
+
+    public function testEnabledViaMinifierOptions(): void
+    {
+        $minifier = new HtmlMin(new \Akankov\HtmlMin\Config\MinifierOptions(removeOmittedHtmlStartTags: true));
+
+        self::assertTrue($minifier->isDoRemoveOmittedHtmlStartTags());
+        self::assertStringNotContainsString(
+            '<body>',
+            $minifier->minify('<!doctype html><html><head><title>x</title></head><body><p>hi</p></body></html>'),
+        );
+    }
+
     public function testAlwaysOptionalTags(): void
     {
         $doc = self::loadDoc('<body><p>x</p></body>');

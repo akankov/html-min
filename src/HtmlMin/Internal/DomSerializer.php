@@ -97,23 +97,25 @@ class DomSerializer
             }
 
             if ($child instanceof DOMElement) {
-                $attributes = $this->attributesToString($child);
-                $parts[] = $attributes === ''
-                    ? '<' . $child->tagName
-                    : '<' . $child->tagName . ' ' . $attributes;
-                $parts[] = '>' . $this->toString($child);
+                $isHtml5 = !$this->config->isHTML4() && !$this->config->isXHTML();
+                $omitEndTags = $isHtml5 && $this->config->isDoRemoveOmittedHtmlTags();
+                // Start-tag omission is a separate opt-in — far more aggressive
+                // than end-tag omission (can blank out an empty document).
+                $omitStartTags = $isHtml5 && $this->config->isDoRemoveOmittedHtmlStartTags();
 
-                if (
-                    !(
-                        $this->config->isDoRemoveOmittedHtmlTags()
-                        &&
-                        !$this->config->isHTML4()
-                        &&
-                        !$this->config->isXHTML()
-                        &&
-                        $this->optionalTagOmission->isOptional($child)
-                    )
-                ) {
+                if ($omitStartTags && $this->optionalTagOmission->isStartOptional($child)) {
+                    // Start tag omitted: emit only the element's content. (A start
+                    // tag is never omitted when it has attributes, so none are lost.)
+                    $parts[] = $this->toString($child);
+                } else {
+                    $attributes = $this->attributesToString($child);
+                    $parts[] = $attributes === ''
+                        ? '<' . $child->tagName
+                        : '<' . $child->tagName . ' ' . $attributes;
+                    $parts[] = '>' . $this->toString($child);
+                }
+
+                if (!($omitEndTags && $this->optionalTagOmission->isOptional($child))) {
                     $parts[] = '</' . $child->tagName . '>';
                 }
 
