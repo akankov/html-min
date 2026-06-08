@@ -61,6 +61,31 @@ class OptionalTagOmission
     private const string ASCII_WHITESPACE = " \t\n\f\r";
 
     /**
+     * Tags whose START tag may be omitted (conditionally — see isStartOptional).
+     *
+     * @var string[]
+     */
+    private const array START_OPTIONAL_TAGS = [
+        'html',
+        'head',
+        'body',
+    ];
+
+    /**
+     * Elements that, as the first child of `<body>`, block its start-tag
+     * omission (the spec carves these out of the "not whitespace/comment" rule).
+     *
+     * @var string[]
+     */
+    private const array BODY_START_BLOCKING_FIRST_ELEMENTS = [
+        'meta',
+        'link',
+        'script',
+        'style',
+        'template',
+    ];
+
+    /**
      * Elements a `<source>` may sit in for its end tag to be omittable.
      *
      * @var string[]
@@ -262,6 +287,60 @@ class OptionalTagOmission
         }
 
         return $next instanceof DOMElement && \in_array($next->tagName, self::P_FOLLOWED_BY, true);
+    }
+
+    /**
+     * Whether $node's START tag may be omitted per the WHATWG spec. A start tag
+     * is never omitted when the element carries any attributes.
+     *
+     * - `<html>` — omittable unless its first child is a comment.
+     * - `<head>` — omittable when empty or when its first child is an element.
+     * - `<body>` — omittable when empty, or when its first child is neither
+     *   whitespace nor a comment and is not a meta/link/script/style/template
+     *   element.
+     */
+    public function isStartOptional(DOMElement $node): bool
+    {
+        $tag = $node->nodeName;
+
+        if (!\in_array($tag, self::START_OPTIONAL_TAGS, true)) {
+            return false;
+        }
+
+        // A start tag is never omitted when the element carries attributes.
+        // (DOMElement::$attributes is always a (possibly empty) map, never null.)
+        if ($node->attributes->length > 0) {
+            return false;
+        }
+
+        return match ($tag) {
+            'html' => !($node->firstChild instanceof DOMComment),
+            'head' => $node->firstChild === null || $node->firstChild instanceof DOMElement,
+            'body' => self::bodyStartOptional($node),
+        };
+    }
+
+    private static function bodyStartOptional(DOMElement $node): bool
+    {
+        $first = $node->firstChild;
+
+        if ($first === null) {
+            return true;
+        }
+
+        if ($first instanceof DOMComment) {
+            return false;
+        }
+
+        if ($first instanceof DOMText) {
+            return strspn($first->wholeText, self::ASCII_WHITESPACE) === 0;
+        }
+
+        // An element first child blocks omission only when it's one of the
+        // carve-out elements; any other node type (the spec doesn't restrict
+        // them) leaves the start tag omittable.
+        return !($first instanceof DOMElement
+                 && \in_array($first->nodeName, self::BODY_START_BLOCKING_FIRST_ELEMENTS, true));
     }
 
     /**

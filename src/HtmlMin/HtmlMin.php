@@ -88,6 +88,8 @@ class HtmlMin implements HtmlMinInterface
 
     private bool $doRemoveOmittedHtmlTags = true;
 
+    private bool $doRemoveOmittedHtmlStartTags = false;
+
     private bool $doRemoveHttpPrefixFromAttributes = false;
 
     private bool $doRemoveHttpsPrefixFromAttributes = false;
@@ -213,6 +215,7 @@ class HtmlMin implements HtmlMinInterface
         $this->doRemoveWhitespaceAroundTags = $options->removeWhitespaceAroundTags;
         $this->doRemoveOmittedQuotes = $options->removeOmittedQuotes;
         $this->doRemoveOmittedHtmlTags = $options->removeOmittedHtmlTags;
+        $this->doRemoveOmittedHtmlStartTags = $options->removeOmittedHtmlStartTags;
         $this->doRemoveHttpPrefixFromAttributes = $options->removeHttpPrefixFromAttributes;
         $this->doRemoveHttpsPrefixFromAttributes = $options->removeHttpsPrefixFromAttributes;
         $this->doKeepHttpAndHttpsPrefixOnExternalAttributes = $options->keepHttpAndHttpsPrefixOnExternalAttributes;
@@ -450,6 +453,18 @@ class HtmlMin implements HtmlMinInterface
         return $this;
     }
 
+    /**
+     * Opt-in: also omit the `<html>`/`<head>`/`<body>` START tags where the
+     * HTML5 spec allows. Far more aggressive than end-tag omission (see
+     * {@see MinifierOptions::$removeOmittedHtmlStartTags}); off by default.
+     */
+    public function doRemoveOmittedHtmlStartTags(bool $doRemoveOmittedHtmlStartTags = true): self
+    {
+        $this->doRemoveOmittedHtmlStartTags = $doRemoveOmittedHtmlStartTags;
+
+        return $this;
+    }
+
 
     public function doRemoveOmittedQuotes(bool $doRemoveOmittedQuotes = true): self
     {
@@ -627,6 +642,12 @@ class HtmlMin implements HtmlMinInterface
     public function isDoRemoveOmittedHtmlTags(): bool
     {
         return $this->doRemoveOmittedHtmlTags;
+    }
+
+    #[Override]
+    public function isDoRemoveOmittedHtmlStartTags(): bool
+    {
+        return $this->doRemoveOmittedHtmlStartTags;
     }
 
     #[Override]

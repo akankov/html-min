@@ -52,6 +52,8 @@ interface HtmlMinInterface
 
     public function isDoRemoveOmittedHtmlTags(): bool;
 
+    public function isDoRemoveOmittedHtmlStartTags(): bool;
+
     public function isDoRemoveHttpPrefixFromAttributes(): bool;
 
     public function isDoRemoveHttpsPrefixFromAttributes(): bool;
