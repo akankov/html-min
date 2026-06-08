@@ -87,6 +87,95 @@ final class OptionalTagOmissionTest extends TestCase
         yield 'p before span'        => ['<div><p>a</p><span>x</span></div>', 'p', 0, false];
         yield 'p at end of div'      => ['<div><p>a</p></div>', 'p', 0, true];
         yield 'p at end of ins'      => ['<ins><p>a</p></ins>', 'p', 0, false];
+
+        // thead — followed by tbody or tfoot (no end-of-parent clause).
+        yield 'thead before tbody' => ['<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>b</td></tr></tbody></table>', 'thead', 0, true];
+        yield 'thead before tfoot' => ['<table><thead><tr><th>h</th></tr></thead><tfoot><tr><td>f</td></tr></tfoot></table>', 'thead', 0, true];
+        yield 'thead at end'       => ['<table><thead><tr><th>h</th></tr></thead></table>', 'thead', 0, false];
+
+        // tbody — followed by tbody or tfoot, or end of parent.
+        yield 'tbody before tfoot' => ['<table><tbody><tr><td>b</td></tr></tbody><tfoot><tr><td>f</td></tr></tfoot></table>', 'tbody', 0, true];
+        yield 'tbody at end'       => ['<table><tbody><tr><td>b</td></tr></tbody></table>', 'tbody', 0, true];
+
+        // tfoot — only at end of parent.
+        yield 'tfoot at end'       => ['<table><tbody><tr><td>b</td></tr></tbody><tfoot><tr><td>f</td></tr></tfoot></table>', 'tfoot', 0, true];
+        yield 'tfoot before tbody' => ['<table><tfoot><tr><td>f</td></tr></tfoot><tbody><tr><td>b</td></tr></tbody></table>', 'tfoot', 0, false];
+    }
+
+    /**
+     * caption / colgroup omit their end tag unless immediately followed by ASCII
+     * whitespace or a comment. Built with explicit DOM nodes so the raw next
+     * sibling is deterministic (libxml's table parser otherwise normalizes the
+     * inter-element whitespace).
+     *
+     * @param 'caption'|'colgroup' $tag
+     */
+    #[DataProvider('provideCaptionColgroupEndTagOmissionCases')]
+    public function testCaptionColgroupEndTagOmission(string $tag, string $nextKind, bool $expected): void
+    {
+        $doc = new DOMDocument();
+        $table = $doc->createElement('table');
+        $element = $doc->createElement($tag);
+        $table->appendChild($element);
+
+        $next = match ($nextKind) {
+            'element'    => $doc->createElement('tbody'),
+            'whitespace' => $doc->createTextNode(' x'),
+            'text'       => $doc->createTextNode('x'),
+            'comment'    => $doc->createComment('c'),
+            default      => null,
+        };
+        if ($next !== null) {
+            $table->appendChild($next);
+        }
+        $doc->appendChild($table);
+
+        self::assertSame($expected, (new OptionalTagOmission())->isOptional($element));
+    }
+
+    /**
+     * @return iterable<string, array{string, string, bool}>
+     */
+    public static function provideCaptionColgroupEndTagOmissionCases(): iterable
+    {
+        foreach (['caption', 'colgroup'] as $tag) {
+            yield "{$tag} before element"    => [$tag, 'element', true];
+            yield "{$tag} at end"            => [$tag, 'none', true];
+            yield "{$tag} before text"       => [$tag, 'text', true];
+            yield "{$tag} before whitespace" => [$tag, 'whitespace', false];
+            yield "{$tag} before comment"    => [$tag, 'comment', false];
+        }
+    }
+
+    /**
+     * Full-pipeline proof that the new table end-tag rules actually drop the
+     * closing tags from minified output.
+     *
+     * @param string[] $absent
+     */
+    #[DataProvider('provideTableEndTagsOmittedInOutputCases')]
+    public function testTableEndTagsOmittedInOutput(string $html, array $absent): void
+    {
+        $output = (new HtmlMin())->minify($html);
+
+        foreach ($absent as $tag) {
+            self::assertStringNotContainsString($tag, $output, "expected {$tag} to be omitted");
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string, string[]}>
+     */
+    public static function provideTableEndTagsOmittedInOutputCases(): iterable
+    {
+        yield 'thead+tbody' => [
+            '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>b</td></tr></tbody></table>',
+            ['</thead>', '</tbody>', '</tr>', '</th>', '</td>'],
+        ];
+        yield 'tfoot at end' => [
+            '<table><tbody><tr><td>b</td></tr></tbody><tfoot><tr><td>f</td></tr></tfoot></table>',
+            ['</tbody>', '</tfoot>'],
+        ];
     }
 
     public function testAlwaysOptionalTags(): void
