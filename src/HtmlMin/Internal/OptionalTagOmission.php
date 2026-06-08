@@ -336,11 +336,11 @@ class OptionalTagOmission
             return strspn($first->wholeText, self::ASCII_WHITESPACE) === 0;
         }
 
-        if ($first instanceof DOMElement) {
-            return !\in_array($first->nodeName, self::BODY_START_BLOCKING_FIRST_ELEMENTS, true);
-        }
-
-        return true;
+        // An element first child blocks omission only when it's one of the
+        // carve-out elements; any other node type (the spec doesn't restrict
+        // them) leaves the start tag omittable.
+        return !($first instanceof DOMElement
+                 && \in_array($first->nodeName, self::BODY_START_BLOCKING_FIRST_ELEMENTS, true));
     }
 
     /**

@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Opt-in `<html>`/`<head>`/`<body>` start-tag omission.** New
   `removeOmittedHtmlStartTags` option (`MinifierOptions` /
   `doRemoveOmittedHtmlStartTags()`), **off by default**, also omits the
-  structural *start* tags where the HTML5 spec allows (never when the element
+  structural _start_ tags where the HTML5 spec allows (never when the element
   has attributes). It is deliberately opt-in: far more aggressive than end-tag
   omission and, on an effectively-empty document, can reduce output to an empty
   string. Existing output is unchanged unless you enable it.
