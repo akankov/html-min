@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Internal: `ProtectedContentManager` extraction.** The protected-content
+  machinery (`<nocompress>`/`<code>` subtrees, inline `<script>`/`<style>`
+  bodies, conditional / special comments) and its state — the saved-node map,
+  counter, and placeholder token — move out of `HtmlMin` into a dedicated
+  `Internal\ProtectedContentManager`. `HtmlMin` drops ~165 lines (1218 → 1053).
+  No behaviour or API change.
 - **Internal: `OptionalTagOmission` rule-dispatch refactor.** The ~280-line
   conditional end-tag boolean is replaced by a per-tag dispatch with small,
   independently-readable rule helpers. No behaviour change — the per-tag truth
