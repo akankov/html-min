@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **More optional end tags omitted.** `removeOmittedHtmlTags` now also drops the
+  end tags of `<thead>` (when followed by `<tbody>`/`<tfoot>`), `<tbody>` and
+  `<tfoot>` (per the spec's "followed by / end of section" rules), and
+  `<caption>`/`<colgroup>` (unless immediately followed by ASCII whitespace or a
+  comment). Smaller table markup; well-formed output is unchanged in meaning.
+
 ### Changed
 
 - **Internal: `OptionalTagOmission` rule-dispatch refactor.** The ~280-line

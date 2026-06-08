@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Akankov\HtmlMin\Internal;
 
+use DOMComment;
 use DOMElement;
 use DOMNode;
 use DOMText;
@@ -48,7 +49,16 @@ class OptionalTagOmission
         'dt',
         'option',
         'p',
+        'thead',
+        'tbody',
+        'tfoot',
     ];
+
+    /**
+     * ASCII whitespace characters per the HTML spec (used by the caption /
+     * colgroup "not immediately followed by whitespace" rule).
+     */
+    private const string ASCII_WHITESPACE = " \t\n\f\r";
 
     /**
      * Elements a `<source>` may sit in for its end tag to be omittable.
@@ -130,6 +140,14 @@ class OptionalTagOmission
             return true;
         }
 
+        // caption / colgroup omit their end tag unless immediately followed by
+        // ASCII whitespace or a comment. That depends on the RAW next sibling,
+        // which the cache key (built from the whitespace-skipped next element)
+        // cannot distinguish — so resolve them uncached, before the cache path.
+        if ($tag_name === 'caption' || $tag_name === 'colgroup') {
+            return self::notFollowedByWhitespaceOrComment($node);
+        }
+
         if (!\in_array($tag_name, self::CONDITIONAL_END_TAGS, true)) {
             return false;
         }
@@ -184,6 +202,9 @@ class OptionalTagOmission
             'td', 'th' => self::followedByOrEndOfParent($next, 'td', 'th'),
             'dd', 'dt' => self::followedByOrEndOfParent($next, 'dd', 'dt'),
             'option'   => self::followedByOrEndOfParent($next, 'option', 'optgroup'),
+            'thead'    => self::followedBy($next, 'tbody', 'tfoot'),
+            'tbody'    => self::followedByOrEndOfParent($next, 'tbody', 'tfoot'),
+            'tfoot'    => $next === null,
             'source'   => \in_array($parentTag, self::SOURCE_PARENTS, true)
                           && self::followedByOrEndOfParent($next, 'source'),
             'p'        => self::pEndTagOptional($node, $next),
@@ -196,11 +217,39 @@ class OptionalTagOmission
      */
     private static function followedByOrEndOfParent(?DOMNode $next, string ...$tags): bool
     {
-        if ($next === null) {
-            return true;
+        return $next === null || self::followedBy($next, ...$tags);
+    }
+
+    /**
+     * True when the next meaningful sibling is an element with one of $tags.
+     * (No "end of parent" clause — used by rules like `<thead>` that require a
+     * specific follower.)
+     */
+    private static function followedBy(?DOMNode $next, string ...$tags): bool
+    {
+        return $next instanceof DOMElement && \in_array($next->tagName, $tags, true);
+    }
+
+    /**
+     * The caption / colgroup rule: omittable unless the element is immediately
+     * followed by ASCII whitespace or a comment. Inspects the raw next sibling
+     * (not the whitespace-skipped one).
+     */
+    private static function notFollowedByWhitespaceOrComment(DOMNode $node): bool
+    {
+        $next = $node->nextSibling;
+
+        if ($next instanceof DOMComment) {
+            return false;
         }
 
-        return $next instanceof DOMElement && \in_array($next->tagName, $tags, true);
+        if ($next instanceof DOMText) {
+            $text = $next->wholeText;
+
+            return $text === '' || !str_contains(self::ASCII_WHITESPACE, $text[0]);
+        }
+
+        return true;
     }
 
     private static function pEndTagOptional(DOMNode $node, ?DOMNode $next): bool
