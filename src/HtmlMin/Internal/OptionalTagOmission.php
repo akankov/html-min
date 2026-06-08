@@ -244,9 +244,9 @@ class OptionalTagOmission
         }
 
         if ($next instanceof DOMText) {
-            $text = $next->wholeText;
-
-            return $text === '' || !str_contains(self::ASCII_WHITESPACE, $text[0]);
+            // Omittable unless the text begins with ASCII whitespace; strspn
+            // measures the leading whitespace run (0 for empty or non-space).
+            return strspn($next->wholeText, self::ASCII_WHITESPACE) === 0;
         }
 
         return true;
