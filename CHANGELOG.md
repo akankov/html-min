@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.0] — 2026-06-08
+
+Completes the HTML5 tag-omission rule set and finishes decomposing the
+minifier core. Default output gets a little smaller (more optional end tags
+dropped); the more aggressive start-tag omission is opt-in. No API breakage.
+
 ### Added
 
 - **More optional end tags omitted.** `removeOmittedHtmlTags` now also drops the
