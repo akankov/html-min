@@ -14,13 +14,12 @@ use Akankov\HtmlMin\Internal\DomSerializer;
 use Akankov\HtmlMin\Internal\HtmlParser;
 use Akankov\HtmlMin\Internal\InlineContentMinifier;
 use Akankov\HtmlMin\Internal\OptionalTagOmission;
+use Akankov\HtmlMin\Internal\ProtectedContentManager;
 use Akankov\HtmlMin\Internal\WhitespaceNormalizer;
 use Akankov\HtmlMin\Observer\OptimizeAttributes;
-use DOMComment;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
-use DOMText;
 use InvalidArgumentException;
 use Override;
 use Psr\Log\LoggerInterface;
@@ -64,17 +63,8 @@ class HtmlMin implements HtmlMinInterface
         'wbr',
     ];
 
-    /**
-     * @var array<int, string>
-     */
-    private array $protectedChildNodes = [];
-
-    // Load-bearing literal: this tag name is inserted into a DOMElement
-    // nodeValue / DOMText and the post-serialize regex expects to find it raw
-    // in the output. Shorter `htmlmin-*` forms can change how libxml serializes
-    // the surrounding text-vs-markup boundary and leave the placeholder
-    // entity-escaped, which silently breaks restoration.
-    private string $protectedChildNodesHelper = 'html-min--protected--saved-content';
+    /** Protected-content swap-out/restore; see {@see ProtectedContentManager}. */
+    private readonly ProtectedContentManager $protectedContentManager;
 
     private bool $doOptimizeViaHtmlDomParser = true;
 
@@ -158,8 +148,6 @@ class HtmlMin implements HtmlMinInterface
     /** @var SplObjectStorage<DomObserver, DomObserver> */
     private SplObjectStorage $domLoopAfterObservers;
 
-    private int $protected_tags_counter = 0;
-
     private bool $isHTML4 = false;
 
     private bool $isXHTML = false;
@@ -195,6 +183,7 @@ class HtmlMin implements HtmlMinInterface
         $this->optionalTagOmission = new OptionalTagOmission();
         $this->domSerializer = new DomSerializer($this, $this->optionalTagOmission);
         $this->inlineContentMinifier = new InlineContentMinifier();
+        $this->protectedContentManager = new ProtectedContentManager($this, $this->inlineContentMinifier);
 
         $this->attachObserverToTheDomLoop(new OptimizeAttributes(), ObserverPhase::After);
 
@@ -717,8 +706,7 @@ class HtmlMin implements HtmlMinInterface
         }
 
         // reset per-call state so successive minify() calls on the same instance start clean
-        $this->protectedChildNodes = [];
-        $this->protected_tags_counter = 0;
+        $this->protectedContentManager->reset();
         $this->withDocType = false;
         $this->isHTML4 = false;
         $this->isXHTML = false;
@@ -771,10 +759,11 @@ class HtmlMin implements HtmlMinInterface
         // Restore protected HTML-code.
         // -------------------------------------------------------------------------
 
-        if (str_contains($html, $this->protectedChildNodesHelper)) {
+        $protectedPlaceholderTag = $this->protectedContentManager->placeholderTag();
+        if (str_contains($html, $protectedPlaceholderTag)) {
             $html = (string) preg_replace_callback(
-                '/<(?<element>' . $this->protectedChildNodesHelper . ')(?<attributes> [^>]*)?>(?<value>.*?)<\/' . $this->protectedChildNodesHelper . '>/',
-                $this->restoreProtectedHtml(...),
+                '/<(?<element>' . $protectedPlaceholderTag . ')(?<attributes> [^>]*)?>(?<value>.*?)<\/' . $protectedPlaceholderTag . '>/',
+                $this->protectedContentManager->restore(...),
                 $html,
             );
         }
@@ -869,55 +858,6 @@ class HtmlMin implements HtmlMinInterface
     }
 
     /**
-     * Check if the current string is an conditional comment.
-     *
-     * INFO: since IE >= 10 conditional comment are not working anymore
-     *
-     * <!--[if expression]> HTML <![endif]-->
-     * <![if expression]> HTML <![endif]>
-     */
-    private function isConditionalComment(string $comment): bool
-    {
-        if (str_contains($comment, '[if ')) {
-            /** @noinspection RegExpRedundantEscape */
-            /** @noinspection NestedPositiveIfStatementsInspection */
-            if (preg_match('/^\[if [^\]]+\]/', $comment)) {
-                return true;
-            }
-        }
-
-        if (str_contains($comment, '[endif]')) {
-            /** @noinspection RegExpRedundantEscape */
-            /** @noinspection NestedPositiveIfStatementsInspection */
-            if (preg_match('/\[endif\]$/', $comment)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if the current string is an special comment.
-     */
-    private function isSpecialComment(string $comment): bool
-    {
-        foreach ($this->specialHtmlCommentsStaringWith as $search) {
-            if (str_starts_with($comment, $search)) {
-                return true;
-            }
-        }
-
-        foreach ($this->specialHtmlCommentsEndingWith as $search) {
-            if (str_ends_with($comment, $search)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * @return array{html: string, doctype: ?DoctypeKind}
      */
     private function minifyHtmlDom(string $html): array
@@ -960,7 +900,7 @@ class HtmlMin implements HtmlMinInterface
         // Protect <nocompress> HTML tags first.
         // -------------------------------------------------------------------------
 
-        $this->protectTagHelper($dom, 'nocompress', true);
+        $this->protectedContentManager->protectNoCompress($dom);
 
         // -------------------------------------------------------------------------
         // Notify the Observer before the minification.
@@ -979,7 +919,12 @@ class HtmlMin implements HtmlMinInterface
         // Protect HTML tags and conditional comments.
         // -------------------------------------------------------------------------
 
-        $this->protectTags($dom);
+        $this->protectedContentManager->protect(
+            $dom,
+            $this->specialHtmlCommentsStaringWith,
+            $this->specialHtmlCommentsEndingWith,
+            $this->logger,
+        );
 
         // -------------------------------------------------------------------------
         // Remove default HTML comments. [protected html is still protected]
@@ -1028,118 +973,6 @@ class HtmlMin implements HtmlMinInterface
         foreach ($this->domLoopBeforeObservers as $observer) {
             $observer->domElementBeforeMinification($domElement, $this);
         }
-    }
-
-    private function protectTagHelper(DOMDocument $dom, string $selector, bool $useElementScope = false): void
-    {
-        foreach (HtmlParser::findAll($dom, $selector) as $element) {
-            // findAll yields elements; a parsed element always has a parent.
-            if ($element instanceof DOMElement && $element->parentNode !== null) {
-                $placeholder = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
-
-                if ($useElementScope) {
-                    // Replace only the matched element's inner content with the
-                    // placeholder. The element itself stays in the DOM, so its
-                    // siblings continue through normal minification.
-                    $this->protectedChildNodes[$this->protected_tags_counter] = HtmlParser::innerHtml($element);
-                    $element->nodeValue = $placeholder;
-                } else {
-                    $parentNode = $element->parentNode;
-                    if ($parentNode->nodeValue !== null) {
-                        $this->protectedChildNodes[$this->protected_tags_counter] = $parentNode instanceof DOMElement ? HtmlParser::innerHtml($parentNode) : '';
-                        $parentNode->nodeValue = $placeholder;
-                    }
-                }
-
-                ++$this->protected_tags_counter;
-            }
-        }
-    }
-
-    /**
-     * Prevent changes of inline "styles" and "scripts".
-     */
-    private function protectTags(DOMDocument $dom): void
-    {
-        $this->protectTagHelper($dom, 'code');
-
-        $didRemoveComments = false;
-
-        foreach (HtmlParser::findAll($dom, 'script, style') as $element) {
-            // findAll('script, style') yields parented elements.
-            if ($element instanceof DOMElement && $element->parentNode !== null) {
-                if ($element->tagName === 'script' || $element->tagName === 'style') {
-                    $attributes = HtmlParser::getAllAttributes($element);
-                    // skip external links
-                    if (isset($attributes['src'])) {
-                        continue;
-                    }
-                }
-
-                // Protected <script>/<style> content keeps internal whitespace, while
-                // leading and trailing padding is stripped before serialization.
-                $inner = HtmlParser::innerHtml($element);
-                if ($element->tagName === 'script' || $element->tagName === 'style') {
-                    $inner = trim($inner);
-                    $inner = $this->inlineContentMinifier->process(
-                        $element,
-                        $inner,
-                        $this->doMinifyInlineCss,
-                        $this->doMinifyInlineJs,
-                        $this->logger,
-                    );
-                }
-                $this->protectedChildNodes[$this->protected_tags_counter] = $inner;
-                $element->nodeValue = '<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>';
-
-                ++$this->protected_tags_counter;
-            }
-        }
-
-        foreach (HtmlParser::findAll($dom, '//comment()') as $element) {
-            // findAll('//comment()') yields parented comment nodes.
-            if ($element instanceof DOMComment && $element->parentNode !== null) {
-                $text = $element->textContent;
-
-                if (
-                    !$this->isConditionalComment($text)
-                    &&
-                    !$this->isSpecialComment($text)
-                ) {
-                    if ($this->doRemoveComments && !str_contains($text, '[')) {
-                        $parentNode = $element->parentNode;
-                        $parentNode->removeChild($element);
-                        $didRemoveComments = true;
-                    }
-
-                    continue;
-                }
-
-                $this->protectedChildNodes[$this->protected_tags_counter] = '<!--' . $text . '-->';
-
-                $child = new DOMText('<' . $this->protectedChildNodesHelper . ' data-' . $this->protectedChildNodesHelper . '="' . $this->protected_tags_counter . '"></' . $this->protectedChildNodesHelper . '>');
-                $parentNode = $element->parentNode;
-                $parentNode->replaceChild($child, $element);
-
-                ++$this->protected_tags_counter;
-            }
-        }
-
-        if ($didRemoveComments) {
-            $dom->normalizeDocument();
-        }
-    }
-
-    /**
-     * Callback function for preg_replace_callback use.
-     *
-     * @param array<int|string, string> $matches PREG matches
-     */
-    private function restoreProtectedHtml(array $matches): string
-    {
-        return preg_match('/=(?:"|)?(\d+)(?:"|)?/', str_replace("'", "\a", (string) $matches['attributes']), $matchesInner) === 1
-            ? ($this->protectedChildNodes[(int) $matchesInner[1]] ?? '')
-            : '';
     }
 
     /**
