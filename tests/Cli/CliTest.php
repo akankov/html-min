@@ -10,6 +10,32 @@ use PHPUnit\Framework\TestCase;
 
 final class CliTest extends TestCase
 {
+    private string $previousCwd;
+
+    private string $scratchDir;
+
+    // Run every test from a throwaway directory: under mutation testing a
+    // mutant can corrupt path handling into a relative write (e.g. Infection's
+    // TrueValue on the '--output=' str_starts_with() turns an input path
+    // '/tmp/htmlminXYZ' into a CWD-relative 'minXYZ' via substr($arg, 9)),
+    // and without this chdir() those droppings land in the repo root.
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->previousCwd = (string) getcwd();
+        $this->scratchDir = sys_get_temp_dir() . '/html-min-cli-test-' . bin2hex(random_bytes(6));
+        mkdir($this->scratchDir);
+        chdir($this->scratchDir);
+    }
+
+    protected function tearDown(): void
+    {
+        // Restore CWD only; the scratch dir lives under the system temp dir,
+        // so we let the OS reap it rather than chase teardown bookkeeping.
+        chdir($this->previousCwd);
+        parent::tearDown();
+    }
+
     public function testReadsHtmlFromStdinAndWritesMinifiedToStdout(): void
     {
         // Default invocation with no path argument: read full HTML from
