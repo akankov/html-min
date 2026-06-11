@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Mutation-testing droppings in the repo root.** `CliTest` now runs each
+  test from a scratch directory under the system temp dir. Under Infection,
+  the `TrueValue` mutator on the `--output=` `str_starts_with()` check turned
+  an input path `/tmp/htmlminXYZ` into a CWD-relative `minXYZ` via
+  `substr($arg, 9)`, so every `make infection` run left a 0-byte `min*` file
+  in the repository root. The mutant was killed either way; the side effect
+  now lands in the scratch dir instead. The `/min*` `.gitignore` entry that
+  papered over this is gone.
+
 ## [2.9.0] — 2026-06-08
 
 Completes the HTML5 tag-omission rule set and finishes decomposing the
