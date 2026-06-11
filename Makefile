@@ -15,7 +15,7 @@ MIN_LINE_COVERAGE := 100
 MIN_MSI           := 75
 MIN_COVERED_MSI   := 75
 
-.PHONY: help install update outdated test test-all phpstan phan phan-image coverage-image coverage infection cs cs-check rector rector-check md md-check bench-install bench bench-quick bench-baseline bench-cs bench-cs-check bench-rector bench-rector-check bench-phpstan bench-test bench-quality quality ci clean
+.PHONY: help install update outdated test test-all phpstan phan phan-image coverage-image coverage infection cs cs-check rector rector-check md md-check bench-install bench bench-quick bench-baseline bench-baseline-check bench-cs bench-cs-check bench-rector bench-rector-check bench-phpstan bench-test bench-quality quality ci clean
 
 BENCH_GIT_SHA   := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BENCH_GIT_DIRTY := $(shell git diff-index --quiet HEAD -- 2>/dev/null && echo clean || echo dirty)
@@ -95,6 +95,18 @@ bench: ## Run full benchmark suite, write latest.md, sync Summary block into REA
 	$(BENCH_PHP) bin/render-report.php build/bench.xml build/compression.json ../latest.md
 	$(BENCH_PHP) bin/inject-readme-bench.php ../latest.md ../README.md
 	$(MARKDOWN_FMT) --write README.md
+	@$(MAKE) --no-print-directory bench-baseline-check
+
+bench-baseline-check: ## Warn when baseline.md is missing or >30 days older than latest.md
+	@if [ ! -f baseline.md ]; then \
+		echo "bench-baseline-check: WARNING — no baseline.md snapshot; run 'make bench-baseline' after a release-quality run"; \
+	elif [ -f latest.md ]; then \
+		latest_mtime=$$(stat -f %m latest.md 2>/dev/null || stat -c %Y latest.md); \
+		baseline_mtime=$$(stat -f %m baseline.md 2>/dev/null || stat -c %Y baseline.md); \
+		if [ $$((latest_mtime - baseline_mtime)) -gt 2592000 ]; then \
+			echo "bench-baseline-check: WARNING — baseline.md is >30 days older than latest.md; refresh with 'make bench-baseline' (policy: refresh on every minor release)"; \
+		fi; \
+	fi
 
 bench-quick: ## Faster bench for local loops (fewer iterations); writes to benchmarks/build/quick-report.md, never latest.md
 	mkdir -p benchmarks/build
