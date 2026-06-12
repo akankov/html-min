@@ -8,6 +8,7 @@ use Akankov\HtmlMin\Config\MinifierOptions;
 use Akankov\HtmlMin\HtmlMin;
 use Error;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 final class MinifierOptionsTest extends TestCase
 {
@@ -44,11 +45,85 @@ final class MinifierOptionsTest extends TestCase
         self::assertFalse($o->keepBrokenHtml);
         self::assertFalse($o->minifyInlineCss);
         self::assertFalse($o->minifyInlineJs);
+        self::assertFalse($o->removeOmittedHtmlStartTags);
         self::assertSame([], $o->localDomains);
         self::assertSame([], $o->specialHtmlCommentsStartingWith);
         self::assertSame([], $o->specialHtmlCommentsEndingWith);
         self::assertNull($o->specialScriptTags);
         self::assertNull($o->templateLogicSyntaxInSpecialScriptTags);
+    }
+
+    public function testAggressivePresetDeltaFromDefaults(): void
+    {
+        // Pin the exact set of flags the preset flips — including that
+        // everything else (notably URL scheme stripping and keepBrokenHtml)
+        // stays at its default.
+        self::assertEqualsCanonicalizing([
+            'removeWhitespaceAroundTags',
+            'removeSpacesBetweenTags',
+            'removeDefaultAttributes',
+            'removeDefaultTypeFromButton',
+            'minifyInlineCss',
+            'minifyInlineJs',
+            'removeOmittedHtmlStartTags',
+        ], self::deltaFromDefaults(MinifierOptions::aggressive()));
+    }
+
+    public function testConservativePresetDeltaFromDefaults(): void
+    {
+        self::assertEqualsCanonicalizing([
+            'removeOmittedQuotes',
+            'removeOmittedHtmlTags',
+            'sortCssClassNames',
+            'sortHtmlAttributes',
+            'removeValueFromEmptyInput',
+            'removeEmptyAttributes',
+        ], self::deltaFromDefaults(MinifierOptions::conservative()));
+    }
+
+    public function testAggressiveOutputIsNoLargerThanDefaults(): void
+    {
+        // Note: <body> must not start with whitespace — the spec forbids
+        // omitting its start tag when the first thing inside is whitespace,
+        // and the engine decides omission on the pre-collapse tree.
+        $html = '<html><head><title>t</title><style>a { color: red; /* x */ }</style></head>'
+            . "<body><div>\n    <p>hello</p>\n  </div></body></html>";
+
+        $default = (new HtmlMin(MinifierOptions::defaults()))->minify($html);
+        $aggressive = (new HtmlMin(MinifierOptions::aggressive()))->minify($html);
+
+        self::assertLessThanOrEqual(\strlen($default), \strlen($aggressive));
+        self::assertStringNotContainsString('<body>', $aggressive);
+        self::assertStringContainsString('a{color:red}', $aggressive);
+    }
+
+    public function testConservativeKeepsMarkupShape(): void
+    {
+        // Optional end tags, attribute quotes, and class order survive; only
+        // whitespace runs and comments are touched.
+        $out = (new HtmlMin(MinifierOptions::conservative()))
+            ->minify('<ul>  <li class="b a">x<!-- gone --></li>  </ul>');
+
+        self::assertStringContainsString('</li>', $out);
+        self::assertStringContainsString('class="b a"', $out);
+        self::assertStringNotContainsString('<!-- gone -->', $out);
+    }
+
+    /**
+     * @return list<string> names of properties whose values differ from {@see MinifierOptions::defaults()}
+     */
+    private static function deltaFromDefaults(MinifierOptions $preset): array
+    {
+        $defaults = MinifierOptions::defaults();
+
+        $diff = [];
+        foreach ((new ReflectionClass(MinifierOptions::class))->getProperties() as $property) {
+            if ($property->getValue($preset) !== $property->getValue($defaults)) {
+                $diff[] = $property->getName();
+            }
+        }
+
+        return $diff;
     }
 
     public function testDefaultsMatchNoArgHtmlMin(): void

@@ -75,4 +75,58 @@ class MinifierOptions
     {
         return new self();
     }
+
+    /**
+     * Maximum byte savings while staying within what the HTML5 spec allows.
+     *
+     * On top of the defaults this trims whitespace around block tags, drops
+     * whitespace-only text nodes between elements, omits the optional
+     * `<html>`/`<head>`/`<body>` START tags, removes spec-default attributes
+     * (`<form method=get>`, `<button type=submit>`), and minifies inline
+     * CSS/JS with the bundled conservative minifiers.
+     *
+     * Trade-offs: whitespace between *inline* elements is rendering-
+     * significant, so the two whitespace options can change visual spacing
+     * in markup that relies on it; start-tag omission can reduce an
+     * effectively-empty document to an empty string. URL scheme stripping
+     * (`removeHttpPrefixFromAttributes`/`removeHttpsPrefixFromAttributes`)
+     * stays off even here because protocol-relative URLs change meaning
+     * outside an http(s) context.
+     */
+    public static function aggressive(): self
+    {
+        return new self(
+            removeWhitespaceAroundTags: true,
+            removeDefaultAttributes: true,
+            removeDefaultTypeFromButton: true,
+            removeSpacesBetweenTags: true,
+            minifyInlineCss: true,
+            minifyInlineJs: true,
+            removeOmittedHtmlStartTags: true,
+        );
+    }
+
+    /**
+     * Shape-preserving minification: never reorders, rewrites, or omits
+     * markup constructs — only collapses whitespace runs, strips comments,
+     * and drops attributes the HTML5 spec defines as redundant (deprecated
+     * `type=`/`charset=` attributes and friends).
+     *
+     * Compared to the defaults this keeps optional end tags and attribute
+     * quotes in place, leaves attribute/class order untouched, and keeps
+     * empty attributes — useful when the output is diffed against the
+     * input, post-processed by tools that rely on the original shape, or
+     * styled via selectors like `[data-x=""]`.
+     */
+    public static function conservative(): self
+    {
+        return new self(
+            removeOmittedQuotes: false,
+            removeOmittedHtmlTags: false,
+            sortCssClassNames: false,
+            sortHtmlAttributes: false,
+            removeValueFromEmptyInput: false,
+            removeEmptyAttributes: false,
+        );
+    }
 }
