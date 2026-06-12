@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`MinifierOptions` presets.** `MinifierOptions::aggressive()` (maximum
+  spec-valid byte savings: block-tag whitespace trimming, whitespace-only
+  text-node removal, start-tag omission, spec-default attribute removal,
+  inline CSS/JS minification — URL scheme stripping deliberately stays off)
+  and `MinifierOptions::conservative()` (shape-preserving: keeps optional
+  end tags, attribute quotes, attribute/class order, and empty attributes;
+  only collapses whitespace, strips comments, and drops deprecated
+  attributes). Both sit alongside the existing `defaults()`; a new README
+  "Presets" section documents the trade-offs. The constructor surface is
+  unchanged, so binding config keys are unaffected.
+
 ### Fixed
 
 - **Mutation-testing droppings in the repo root.** `CliTest` now runs each

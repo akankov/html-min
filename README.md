@@ -67,6 +67,7 @@ $htmlMin = (new HtmlMin())
     ->doSortCssClassNames(true)          // canonical class order → better gzip
     ->doRemoveOmittedQuotes(true)        // class="foo" → class=foo when safe
     ->doRemoveOmittedHtmlTags(true)      // <p>x</p> → <p>x where the closing tag is optional
+    ->doRemoveOmittedHtmlStartTags(false)// aggressive: also omit the <html>/<head>/<body> START tags
     ->doRemoveEmptyAttributes(true)
     ->doRemoveValueFromEmptyInput(true)
     ->doRemoveDefaultAttributes(false)   // opt-in: drop defaults like form method=get
@@ -94,6 +95,41 @@ echo $htmlMin->minify($html);
 ```
 
 Each setter returns `$this`, so you can configure and call `minify()` in one chain.
+
+### Presets
+
+`MinifierOptions` ships three named starting points so you don't have to
+reason about all 27 flags at once:
+
+```php
+use Akankov\HtmlMin\Config\MinifierOptions;
+use Akankov\HtmlMin\HtmlMin;
+
+$balanced     = new HtmlMin(MinifierOptions::defaults());     // same as new HtmlMin()
+$smallest     = new HtmlMin(MinifierOptions::aggressive());
+$shapeStable  = new HtmlMin(MinifierOptions::conservative());
+```
+
+- **`defaults()`** — the balanced configuration shown above. Safe for almost
+  any HTML; output is spec-equivalent to the input.
+- **`aggressive()`** — maximum byte savings within what the HTML5 spec
+  allows. Adds block-tag whitespace trimming, whitespace-only text-node
+  removal, `<html>`/`<head>`/`<body>` start-tag omission, spec-default
+  attribute removal, and inline CSS/JS minification. Two trade-offs to know:
+  whitespace between _inline_ elements is rendering-significant, so markup
+  that relies on `</span> <span>` spacing can render tighter; and start-tag
+  omission can reduce an effectively-empty document — a bare html/head/body
+  skeleton — to an empty string, which is correct per spec but surprising the
+  first time. URL scheme stripping stays off even here because
+  protocol-relative URLs change meaning outside an http(s) context.
+- **`conservative()`** — shape-preserving: only collapses whitespace runs,
+  strips comments, and drops spec-redundant deprecated attributes. Keeps
+  optional end tags, attribute quotes, attribute/class order, and empty
+  attributes. Use it when output is diffed against input, post-processed by
+  shape-sensitive tools, or styled via selectors like `[data-x=""]`.
+
+Presets are plain constructors — start from one and override per-flag with
+the fluent setters if you need a variation.
 
 ## Inline CSS and JS minification
 
