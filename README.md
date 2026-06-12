@@ -178,6 +178,23 @@ If a bundled minifier throws, the original source is kept and a warning is sent
 to the PSR-3 logger (when one is set via `setLogger()`), so a minifier bug can
 never corrupt the page. User-supplied callables let their exceptions propagate.
 
+## Command line
+
+The package ships a small CLI at `vendor/bin/html-min` — handy for one-off
+minification, build pipelines, and inspecting what a config change does:
+
+```bash
+vendor/bin/html-min page.html                      # minify a file to stdout
+vendor/bin/html-min page.html --output=page.min.html
+cat page.html | vendor/bin/html-min                # stdin → stdout
+vendor/bin/html-min page.html --minify-inline-css --minify-inline-js
+```
+
+Exit codes: `0` success, `1` I/O failure (unreadable input / unwritable
+`--output`), `2` invalid argument. `--help` prints the full usage text.
+`make phar` builds a self-contained `dist/html-min.phar` for use outside a
+Composer project.
+
 ## Extending
 
 To run your own pass over every element during minification, implement
@@ -206,6 +223,29 @@ $htmlMin = new HtmlMin();
 $htmlMin->attachObserverToTheDomLoop(new StripDataTestIds());
 echo $htmlMin->minify($html);
 ```
+
+Observer practicalities worth knowing before you ship one:
+
+- **Phases.** `attachObserverToTheDomLoop()` takes an optional
+  `ObserverPhase` (`Before`, `After`, or the default `Both`):
+  `domElementBeforeMinification()` runs in the pre-pass, before attribute
+  optimization; `domElementAfterMinification()` in the post-pass. Register
+  for only the phase you need — each hook fires for **every element** on
+  every `minify()` call, so heavy work multiplies across the document.
+- **Ordering.** Observers run in registration order within a phase, and the
+  built-in `OptimizeAttributes` observer is registered first (in the
+  `After` phase) — your after-phase observers see already-optimized
+  attributes. There is no priority system.
+- **Branch on the live config.** The second argument is the owning
+  `HtmlMinInterface`; its `isDo*()` getters reflect the actual flags, so an
+  observer can follow e.g. `isDoRemoveHttpPrefixFromAttributes()` instead of
+  duplicating configuration.
+- **Exceptions propagate.** The DOM walk does not wrap observer calls — a
+  throwing observer aborts the whole `minify()` call. Catch inside the
+  observer if a page must never break on observer bugs.
+- **Mutating the tree is the point**, but removing the element you were just
+  handed (or re-parenting its ancestors) mid-walk can skip nodes — prefer
+  attribute and text mutations, and removal of _descendants_.
 
 ## Benchmarks
 
