@@ -19,7 +19,9 @@ use DOMText;
 class OptionalTagOmission
 {
     /**
-     * Tags whose end tag may always be omitted.
+     * Structural tags whose end tag is omittable under a raw-sibling condition:
+     * `html` and `body` unless immediately followed by a comment, `head`
+     * additionally unless followed by ASCII whitespace (WHATWG §13.1.2.4).
      *
      * @var string[]
      */
@@ -41,6 +43,7 @@ class OptionalTagOmission
         'li',
         'optgroup',
         'rp',
+        'rt',
         'tr',
         'source',
         'td',
@@ -108,10 +111,14 @@ class OptionalTagOmission
         'article',
         'aside',
         'blockquote',
-        'dir',
+        'details',
+        'dialog',
+        'dir', // legacy extra: not in the spec list, but parsers auto-close <p> before <dir> too
         'div',
         'dl',
         'fieldset',
+        'figcaption',
+        'figure',
         'footer',
         'form',
         'h1',
@@ -123,11 +130,13 @@ class OptionalTagOmission
         'header',
         'hgroup',
         'hr',
+        'main',
         'menu',
         'nav',
         'ol',
         'p',
         'pre',
+        'search',
         'section',
         'table',
         'ul',
@@ -162,7 +171,16 @@ class OptionalTagOmission
         $tag_name = $node->nodeName;
 
         if (\in_array($tag_name, self::OPTIONAL_END_TAGS, true)) {
-            return true;
+            // Raw-sibling condition (uncached, like caption/colgroup below): a
+            // following comment blocks omission for all three — omitting would
+            // pull the comment inside the element on reparse, a real DOM
+            // change. Deliberate, output-safe deviation: the spec additionally
+            // blocks `head` when followed by ASCII whitespace, but the only
+            // reparse difference is a whitespace text node relocating into
+            // head — rendering-identical — and nearly every real-world page
+            // has whitespace there, so honoring it would cost `</head>` on
+            // virtually every document. Locked by OptionalTagOmissionTest.
+            return !($node->nextSibling instanceof DOMComment);
         }
 
         // caption / colgroup omit their end tag unless immediately followed by
@@ -220,13 +238,13 @@ class OptionalTagOmission
     {
         // @phpstan-ignore match.unhandled (exhaustive over CONDITIONAL_END_TAGS)
         return match ($tag) {
-            'li'       => self::followedByOrEndOfParent($next, 'li'),
-            'optgroup' => self::followedByOrEndOfParent($next, 'optgroup'),
-            'rp'       => self::followedByOrEndOfParent($next, 'rp', 'rt'),
-            'tr'       => self::followedByOrEndOfParent($next, 'tr'),
-            'td', 'th' => self::followedByOrEndOfParent($next, 'td', 'th'),
-            'dd', 'dt' => self::followedByOrEndOfParent($next, 'dd', 'dt'),
-            'option'   => self::followedByOrEndOfParent($next, 'option', 'optgroup'),
+            'li'         => self::followedByOrEndOfParent($next, 'li'),
+            'optgroup'   => self::followedByOrEndOfParent($next, 'optgroup', 'hr'),
+            'rp', 'rt'   => self::followedByOrEndOfParent($next, 'rp', 'rt'),
+            'tr'         => self::followedByOrEndOfParent($next, 'tr'),
+            'td', 'th'   => self::followedByOrEndOfParent($next, 'td', 'th'),
+            'dd', 'dt'   => self::followedByOrEndOfParent($next, 'dd', 'dt'),
+            'option'     => self::followedByOrEndOfParent($next, 'option', 'optgroup', 'hr'),
             'thead'    => self::followedBy($next, 'tbody', 'tfoot'),
             'tbody'    => self::followedByOrEndOfParent($next, 'tbody', 'tfoot'),
             'tfoot'    => $next === null,
