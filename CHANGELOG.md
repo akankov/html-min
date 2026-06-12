@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.0] — 2026-06-12
+
+Presets, a WHATWG omission audit, and docs. Default output gets a little
+smaller (more optional end tags dropped) and a little more correct (structural
+end tags are kept in front of preserved comments). No API breakage; the
+`MinifierOptions` constructor surface is unchanged.
+
 ### Added
 
 - **`MinifierOptions` presets.** `MinifierOptions::aggressive()` (maximum
