@@ -20,8 +20,16 @@ final class OptionalTagOmissionTest extends TestCase
 {
     private static function loadDoc(string $html): DOMDocument
     {
+        // libxml's HTML4-era parser warns on post-HTML4 elements (<details>,
+        // <search>, …); collect-and-clear keeps those warnings out of PHPUnit
+        // while the elements still land in the tree.
+        $previous = libxml_use_internal_errors(true);
+
         $doc = new DOMDocument();
         $doc->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
 
         return $doc;
     }
@@ -78,15 +86,32 @@ final class OptionalTagOmissionTest extends TestCase
         yield 'dt at end (deviation, still true)' => ['<dl><dt>a</dt></dl>', 'dt', 0, true];
         yield 'dd before div'  => ['<dl><dd>a</dd><div>x</div></dl>', 'dd', 0, false];
 
-        // option — followed by option or optgroup, or end of parent.
+        // option — followed by option, optgroup, or hr, or end of parent.
         yield 'option before option' => ['<select><option>1</option><option>2</option></select>', 'option', 0, true];
         yield 'option at end'        => ['<select><option>1</option></select>', 'option', 0, true];
+
+        // optgroup — also omittable before <hr> (the <select> separator addition).
+        yield 'optgroup before hr' => ['<select><optgroup><option>1</option></optgroup><hr><optgroup><option>2</option></optgroup></select>', 'optgroup', 0, true];
+
+        // rt — same rule as rp: followed by rt or rp, or end of parent.
+        yield 'rt before rp'   => ['<ruby>A<rt>a</rt><rp>)</rp></ruby>', 'rt', 0, true];
+        yield 'rt before rt'   => ['<ruby>A<rt>a</rt><rt>b</rt></ruby>', 'rt', 0, true];
+        yield 'rt at end'      => ['<ruby>A<rt>a</rt></ruby>', 'rt', 0, true];
+        yield 'rt before text' => ['<ruby><rt>a</rt>x</ruby>', 'rt', 0, false];
 
         // p — followed by a block element, or end of parent (excluding certain parents).
         yield 'p before div'         => ['<div><p>a</p><div>x</div></div>', 'p', 0, true];
         yield 'p before span'        => ['<div><p>a</p><span>x</span></div>', 'p', 0, false];
         yield 'p at end of div'      => ['<div><p>a</p></div>', 'p', 0, true];
         yield 'p at end of ins'      => ['<ins><p>a</p></ins>', 'p', 0, false];
+
+        // p — the post-HTML4 entries of the spec's followed-by list.
+        yield 'p before details'    => ['<div><p>a</p><details>d</details></div>', 'p', 0, true];
+        yield 'p before dialog'     => ['<div><p>a</p><dialog>d</dialog></div>', 'p', 0, true];
+        yield 'p before figcaption' => ['<figure><p>a</p><figcaption>c</figcaption></figure>', 'p', 0, true];
+        yield 'p before figure'     => ['<div><p>a</p><figure>f</figure></div>', 'p', 0, true];
+        yield 'p before main'       => ['<div><p>a</p><main>m</main></div>', 'p', 0, true];
+        yield 'p before search'     => ['<div><p>a</p><search>s</search></div>', 'p', 0, true];
 
         // thead — followed by tbody or tfoot (no end-of-parent clause).
         yield 'thead before tbody' => ['<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>b</td></tr></tbody></table>', 'thead', 0, true];
@@ -145,6 +170,96 @@ final class OptionalTagOmissionTest extends TestCase
             yield "{$tag} before whitespace" => [$tag, 'whitespace', false];
             yield "{$tag} before comment"    => [$tag, 'comment', false];
         }
+    }
+
+    /**
+     * option before `<hr>` (the `<select>` separator addition) — built with
+     * explicit DOM nodes because libxml's HTML4-era parser relocates an `<hr>`
+     * out of `<select>`, so a loadHTML-based case would pass for the wrong
+     * reason (option-adjacent-to-option) and leave the `hr` arm untested.
+     */
+    public function testOptionEndTagOmittableBeforeHr(): void
+    {
+        $doc = new DOMDocument();
+        $select = $doc->createElement('select');
+        $option = $doc->createElement('option');
+        $option->appendChild($doc->createTextNode('1'));
+        $select->appendChild($option);
+        $select->appendChild($doc->createElement('hr'));
+        $doc->appendChild($select);
+
+        self::assertTrue((new OptionalTagOmission())->isOptional($option));
+    }
+
+    /**
+     * WHATWG end-tag conditions for the structural tags: `html` and `body` may
+     * omit their end tag unless immediately followed by a comment; `head`
+     * additionally not when followed by ASCII whitespace. Built with explicit
+     * DOM nodes so the raw next sibling is deterministic.
+     *
+     * @param 'html'|'head'|'body' $tag
+     */
+    #[DataProvider('provideStructuralEndTagOmissionCases')]
+    public function testStructuralEndTagOmission(string $tag, string $nextKind, bool $expected): void
+    {
+        $doc = new DOMDocument();
+
+        if ($tag === 'html') {
+            $element = $doc->createElement('html');
+            $doc->appendChild($element);
+            if ($nextKind === 'comment') {
+                $doc->appendChild($doc->createComment('c'));
+            }
+        } else {
+            $html = $doc->createElement('html');
+            $element = $doc->createElement($tag);
+            $html->appendChild($element);
+            $next = match ($nextKind) {
+                'comment'    => $doc->createComment('c'),
+                'whitespace' => $doc->createTextNode(' '),
+                'element'    => $doc->createElement('section'),
+                default      => null,
+            };
+            if ($next !== null) {
+                $html->appendChild($next);
+            }
+            $doc->appendChild($html);
+        }
+
+        self::assertSame($expected, (new OptionalTagOmission())->isOptional($element));
+    }
+
+    /**
+     * @return iterable<string, array{string, string, bool}>
+     */
+    public static function provideStructuralEndTagOmissionCases(): iterable
+    {
+        yield 'html at end'            => ['html', 'none', true];
+        yield 'html before comment'    => ['html', 'comment', false];
+        yield 'body at end'            => ['body', 'none', true];
+        yield 'body before comment'    => ['body', 'comment', false];
+        yield 'body before whitespace' => ['body', 'whitespace', true];
+        yield 'head before element'    => ['head', 'element', true];
+        yield 'head at end'            => ['head', 'none', true];
+        // Deliberate deviation: the spec blocks head-omission before ASCII
+        // whitespace too, but the reparse difference is a rendering-irrelevant
+        // whitespace node moving into head, and honoring it would keep
+        // `</head>` on virtually every real-world page.
+        yield 'head before whitespace (deviation, still true)' => ['head', 'whitespace', true];
+        yield 'head before comment'    => ['head', 'comment', false];
+    }
+
+    /**
+     * Full-pipeline proof: a preserved comment right after `</body>` blocks the
+     * end-tag omission (otherwise a reparse would pull the comment inside body,
+     * changing the DOM).
+     */
+    public function testBodyEndTagKeptWhenFollowedByPreservedComment(): void
+    {
+        $out = (new HtmlMin())->doRemoveComments(false)
+            ->minify('<html><head><title>t</title></head><body>x</body><!--after--></html>');
+
+        self::assertStringContainsString('</body><!--after-->', $out);
     }
 
     /**

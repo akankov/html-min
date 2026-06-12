@@ -19,8 +19,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attributes). Both sit alongside the existing `defaults()`; a new README
   "Presets" section documents the trade-offs. The constructor surface is
   unchanged, so binding config keys are unaffected.
+- **WHATWG omission audit: more optional end tags omitted.** `removeOmittedHtmlTags`
+  now also drops `</option>`/`</optgroup>` before an `<hr>` (the `<select>`
+  separator addition), `</rt>` (previously only `rp` was handled; same
+  followed-by-`rt`/`rp`-or-end rule), and `</p>` before the post-HTML4 block
+  elements the spec lists (`details`, `dialog`, `figcaption`, `figure`,
+  `main`, `search`). Smaller output; meaning unchanged.
+- **Placeholder-nonce property tests.** A 50-iteration sweep proves input that
+  mimics the real nonce-bearing placeholder format round-trips verbatim, and
+  the nonce itself is pinned: 10 lowercase hex chars, stable within a run,
+  fresh on every `HtmlParser::reset()`.
 
 ### Fixed
+
+- **`html`/`head`/`body` end tags are no longer omitted before a comment.**
+  Per WHATWG §13.1.2.4, omitting them there would pull the (preserved or
+  conditional) comment inside the element on reparse — a real DOM change.
+  Deliberate, documented deviation: the spec also blocks `head` omission
+  before ASCII whitespace, but the reparse difference is a rendering-
+  irrelevant whitespace node, and honoring it would keep `</head>` on
+  virtually every real-world page — so whitespace does not block.
 
 - **Mutation-testing droppings in the repo root.** `CliTest` now runs each
   test from a scratch directory under the system temp dir. Under Infection,
