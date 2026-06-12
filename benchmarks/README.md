@@ -37,3 +37,12 @@ numbers, including host/PHP version provenance.
 3. `git add latest.md && git commit -m "docs(benchmarks): refresh"`.
 
 Do not hand-edit `latest.md`. It is regenerated on every run.
+
+## Baseline policy
+
+`baseline.md` is a local (gitignored) snapshot of `latest.md` used to diff
+benchmark numbers across a release. **Refresh it on every minor release**:
+run `make bench` on the release commit, then `make bench-baseline`. `make
+bench` ends with a `bench-baseline-check` that warns when the snapshot is
+missing or more than 30 days older than `latest.md`, so a stale baseline
+can't silently skew a release comparison.
