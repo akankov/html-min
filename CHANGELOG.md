@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.0] — 2026-06-19
+
+Hardening release: a re-entrancy guard on the shared parser state and a
+CPU-exhaustion cap on the opt-in `keepBrokenHtml` mode, plus supply-chain
+tooling. The `MinifierOptions` constructor surface is unchanged and normal
+minification is unaffected.
+
+### Added
+
+- **Re-entrancy guard.** `Internal\HtmlParser` keeps per-run placeholder state
+  in static fields shared by every `HtmlMin` instance in the process. A nested
+  `minify()` — e.g. from a `setInlineCssMinifier()` / `setInlineJsMinifier()`
+  callback or a DOM observer — would reset that state mid-run and leave
+  placeholder tokens in the output. Nesting now throws a `LogicException`, and
+  the lock is released in a `finally` so a throwing callback cannot wedge a
+  persistent worker (Octane / RoadRunner / Swoole). The misleading "static/pure"
+  docblock is corrected accordingly.
+- **Supply-chain tooling.** Weekly Dependabot (composer + github-actions, with
+  a 7-day new-release cooldown) and a non-blocking `composer audit` CI job.
+
+### Security
+
+- **CPU-exhaustion cap on `keepBrokenHtml`.** The broken-HTML rewrite is
+  super-linear in input size, so large input could burn seconds of CPU. Input
+  over 128 KB now skips the rewrite — the document is still minified, just
+  without broken-HTML preservation — and logs a warning when a logger is
+  attached. `useKeepBrokenHtml()` is now documented as trusted-input-only.
+
 ## [2.10.0] — 2026-06-12
 
 Presets, a WHATWG omission audit, and docs. Default output gets a little
@@ -692,4 +720,5 @@ surface.
 [1.2.0]: https://github.com/akankov/html-min/releases/tag/v1.2.0
 [2.0.0]: https://github.com/akankov/html-min/releases/tag/v2.0.0
 [2.5.1]: https://github.com/akankov/html-min/releases/tag/v2.5.1
-[unreleased]: https://github.com/akankov/html-min/compare/v2.5.1...HEAD
+[2.11.0]: https://github.com/akankov/html-min/releases/tag/v2.11.0
+[unreleased]: https://github.com/akankov/html-min/compare/v2.11.0...HEAD
