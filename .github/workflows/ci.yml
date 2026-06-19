@@ -134,7 +134,7 @@ jobs:
           php bin/coverage-check.php build/coverage/clover.xml 100
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           files: build/coverage/clover.xml
           fail_ci_if_error: false
