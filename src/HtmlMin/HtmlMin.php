@@ -721,7 +721,21 @@ class HtmlMin implements HtmlMinInterface
 
         $detectedDoctype = null;
         if ($this->doOptimizeViaHtmlDomParser) {
-            ['html' => $html, 'doctype' => $detectedDoctype] = $this->minifyHtmlDom($html);
+            // Hold the parser's re-entrancy lock across the whole DOM pass: the
+            // inline-minifier callbacks and DOM observers it runs see the
+            // entity placeholders still masked, and a nested minify() from any
+            // of them would reset the shared static maps and corrupt this run's
+            // restore below. The finally releases the lock even when a callback
+            // or observer throws, so a failure never wedges a persistent worker.
+            // The restore pass that follows runs no user code, so it does not
+            // need the lock.
+            HtmlParser::beginRun();
+
+            try {
+                ['html' => $html, 'doctype' => $detectedDoctype] = $this->minifyHtmlDom($html);
+            } finally {
+                HtmlParser::endRun();
+            }
         }
 
         // -------------------------------------------------------------------------
@@ -1005,7 +1019,16 @@ class HtmlMin implements HtmlMinInterface
     }
 
     /**
-     * WARNING: maybe bad for performance ...
+     * Opt in to best-effort preservation of unbalanced / broken HTML through the
+     * libxml round-trip.
+     *
+     * WARNING — trusted input only. The rewrite that backs this mode is
+     * super-linear in input size (it re-scans the whole string once per balanced
+     * tag pair), so large or adversarial input can burn significant CPU. As a
+     * backstop the rewrite is skipped above an internal size cap (the document is
+     * still minified, just without broken-HTML preservation; a warning is logged
+     * when a {@see setLogger()} logger is attached). Do not enable this mode for
+     * untrusted HTML.
      */
     public function useKeepBrokenHtml(bool $keepBrokenHtml): self
     {

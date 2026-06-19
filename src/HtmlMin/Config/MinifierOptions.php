@@ -48,6 +48,8 @@ class MinifierOptions
         public readonly bool $removeEmptyAttributes = true,
         public readonly bool $sumUpWhitespace = true,
         public readonly bool $removeSpacesBetweenTags = false,
+        // Trusted input only: the backing rewrite is super-linear and is skipped
+        // above an internal size cap. See HtmlMin::useKeepBrokenHtml().
         public readonly bool $keepBrokenHtml = false,
         public readonly bool $minifyInlineCss = false,
         public readonly bool $minifyInlineJs = false,

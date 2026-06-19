@@ -15,6 +15,9 @@ use const LIBXML_COMPACT;
 use const LIBXML_HTML_NODEFDTD;
 use const LIBXML_HTML_NOIMPLIED;
 use const LIBXML_NONET;
+
+use LogicException;
+
 use const XML_PI_NODE;
 
 /**
@@ -29,7 +32,11 @@ use const XML_PI_NODE;
  *   - keep `<script>` / special-script / svg contents opaque to the parser,
  *   - skip the implied `<html><body>` wrapper for fragments.
  *
- * All entry points are static/pure.
+ * The masking maps and per-run nonce below are static, so they are shared by
+ * every {@see \Akankov\HtmlMin\HtmlMin} instance in the process. A single
+ * minify() run therefore owns them exclusively for its duration: it is NOT
+ * safe to run two minify() passes concurrently or re-entrantly in one process.
+ * {@see beginRun()} / {@see endRun()} enforce that with a re-entrancy lock.
  */
 class HtmlParser
 {
@@ -151,12 +158,69 @@ class HtmlParser
     private const string SPECIAL_SCRIPT_TAG = 'htmlmin-special-script';
 
     /**
+     * Safety cap (bytes) for the keepBrokenHtml rewriter. {@see rewriteBrokenHtml()}
+     * runs do/while passes that re-scan the whole string once per balanced tag
+     * pair, so its cost is super-linear — ~50 KB already takes hundreds of
+     * milliseconds and it degrades quadratically from there. Above this size the
+     * rewrite is skipped (the document is still parsed and minified normally, it
+     * just loses the best-effort broken-HTML preservation) so a large input
+     * cannot exhaust CPU. keepBrokenHtml is an opt-in, trusted-input-only mode;
+     * this cap is a backstop against accidental oversized input, not a security
+     * boundary — do not feed untrusted HTML to keepBrokenHtml.
+     */
+    private const int KEEP_BROKEN_HTML_MAX_BYTES = 131072; // 128 KB
+
+    /**
      * Extra text-replacement table populated by preprocessing (keepBrokenHtml,
      * keepSpecialSvgTags, keepSpecialScriptTags with template logic).
      *
      * @var array{orig: string[], tmp: string[]}
      */
     private static array $brokenHtmlMap = ['orig' => [], 'tmp' => []];
+
+    /**
+     * Per-process re-entrancy lock for the masking lifecycle, held between
+     * {@see beginRun()} and {@see endRun()}. The placeholder maps and nonce
+     * above are static (shared across every HtmlMin instance), so a nested run
+     * would reset them mid-flight and leave the outer run's placeholders
+     * unmatched — corrupting its output. Nesting is rejected rather than
+     * silently breaking.
+     */
+    private static bool $runActive = false;
+
+    /**
+     * Acquire the masking-lifecycle lock for one minify() run. Throws if a run
+     * is already in progress in this process — the typical cause is a user
+     * inline-CSS/JS minifier callback (or a DOM observer) that calls
+     * HtmlMin::minify() recursively.
+     *
+     * Callers MUST pair this with {@see endRun()} in a finally so a mid-run
+     * exception cannot leave the lock stuck — otherwise every later run in a
+     * persistent worker (Octane / RoadRunner / Swoole) would falsely report a
+     * nested call.
+     */
+    public static function beginRun(): void
+    {
+        if (self::$runActive) {
+            throw new LogicException(
+                'HtmlMin::minify() was called re-entrantly (a nested minify() run). The HTML '
+                . 'parser keeps per-run static state that nesting would corrupt — do not call '
+                . 'minify() from inside an inline CSS/JS minifier callback or a DOM observer.',
+            );
+        }
+
+        self::$runActive = true;
+    }
+
+    /**
+     * Release the masking-lifecycle lock. Does NOT clear the placeholder maps:
+     * {@see putReplacedBackToPreserveHtmlEntities()} still reads them after the
+     * DOM pass returns, and the next run's {@see reset()} clears them.
+     */
+    public static function endRun(): void
+    {
+        self::$runActive = false;
+    }
 
     /**
      * Reset all cross-call state. Call once per minify() run.
@@ -217,7 +281,22 @@ class HtmlParser
         }
 
         if ($keepBrokenHtml) {
-            $html = self::rewriteBrokenHtml(trim($html));
+            $trimmed = trim($html);
+            if (\strlen($trimmed) > self::KEEP_BROKEN_HTML_MAX_BYTES) {
+                // Skip the super-linear broken-HTML rewrite for oversized input so
+                // it cannot exhaust CPU; parse the document normally instead.
+                $logger?->warning(\sprintf(
+                    'keepBrokenHtml skipped: input is %d bytes, over the %d-byte safety cap. '
+                    . 'The broken-HTML rewrite is super-linear; the document is still minified '
+                    . 'but its broken markup is not specially preserved. Disable keepBrokenHtml '
+                    . 'or reduce the input size.',
+                    \strlen($trimmed),
+                    self::KEEP_BROKEN_HTML_MAX_BYTES,
+                ));
+                $html = $trimmed;
+            } else {
+                $html = self::rewriteBrokenHtml($trimmed);
+            }
         }
         $isDOMDocumentCreatedWithoutHtmlWrapper = !str_contains($html, '<html ')
             && !str_contains($html, '<html>')  ;
