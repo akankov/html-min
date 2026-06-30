@@ -10,10 +10,10 @@ use PHPUnit\Framework\TestCase;
 
 final class AdapterRegistryTest extends TestCase
 {
-    public function testAllReturnsExactlySixAdapters(): void
+    public function testAllReturnsExactlyFiveAdapters(): void
     {
         $adapters = AdapterRegistry::all();
-        self::assertCount(6, $adapters);
+        self::assertCount(5, $adapters);
     }
 
     public function testOrderIsStable(): void
@@ -24,7 +24,6 @@ final class AdapterRegistryTest extends TestCase
                 'akankov/html-min',
                 'akankov/html-min (inline)',
                 'voku/html-min',
-                'wyrihaximus/html-compress',
                 'zaininnari/html-minifier',
                 'abordage/html-min',
             ],
