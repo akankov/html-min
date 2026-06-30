@@ -9,7 +9,6 @@ use Akankov\HtmlMinBench\Adapters\AkankovAdapter;
 use Akankov\HtmlMinBench\Adapters\AkankovInlineAdapter;
 use Akankov\HtmlMinBench\Adapters\MinifierAdapter;
 use Akankov\HtmlMinBench\Adapters\VokuAdapter;
-use Akankov\HtmlMinBench\Adapters\WyrihaximusAdapter;
 use Akankov\HtmlMinBench\Adapters\ZaininnariAdapter;
 
 final class AdapterRegistry
@@ -26,7 +25,6 @@ final class AdapterRegistry
             new AkankovAdapter(),
             new AkankovInlineAdapter(),
             new VokuAdapter(),
-            new WyrihaximusAdapter(),
             new ZaininnariAdapter(),
             new AbordageAdapter(),
         ];

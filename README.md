@@ -249,18 +249,17 @@ Observer practicalities worth knowing before you ship one:
 
 ## Benchmarks
 
-Measured against voku/html-min, wyrihaximus/html-compress, zaininnari/html-minifier,
-and abordage/html-min on a corpus of real-world HTML pages.
+Measured against voku/html-min, zaininnari/html-minifier, and abordage/html-min
+on a corpus of real-world HTML pages.
 
 <!-- BENCH-START -->
 
 | adapter                   | median ms/op | geomean ms/op | parse failures | avg gzipped ratio |
 | ------------------------- | ------------ | ------------- | -------------- | ----------------- |
-| akankov/html-min          | 2.4          | 2.4           | 0 / 15         | 90.7%             |
-| akankov/html-min (inline) | 2.5          | 3.0           | 0 / 15         | 87.6%             |
-| voku/html-min             | 3.6          | 4.1           | 0 / 15         | 90.7%             |
-| wyrihaximus/html-compress | 7.0          | 8.8           | 0 / 15         | **87.0%**         |
-| zaininnari/html-minifier  | 10.8         | 9.3           | 0 / 15         | 94.8%             |
+| akankov/html-min          | 2.0          | 2.1           | 0 / 15         | 90.7%             |
+| akankov/html-min (inline) | 2.2          | 2.7           | 0 / 15         | **87.6%**         |
+| voku/html-min             | 3.4          | 3.8           | 0 / 15         | 90.2%             |
+| zaininnari/html-minifier  | 9.5          | 8.2           | 0 / 15         | 94.8%             |
 | abordage/html-min †       | **0.2**      | **0.2**       | 0 / 15         | 90.2%             |
 
 <!-- BENCH-END -->

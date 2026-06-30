@@ -11,8 +11,7 @@
         "ext-simplexml": "*",
         "ext-zlib": "*",
         "akankov/html-min": "@dev",
-        "voku/html-min": "^4.5",
-        "wyrihaximus/html-compress": "^4.4",
+        "voku/html-min": "^5.0",
         "zaininnari/html-minifier": "^0.4",
         "abordage/html-min": "^1.0",
         "phpbench/phpbench": "^1.2"
