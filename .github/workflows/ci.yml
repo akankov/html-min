@@ -34,7 +34,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/composer
           key: composer-${{ matrix.php }}-${{ hashFiles('composer.json') }}
@@ -62,7 +62,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/composer
           key: composer-8.4-${{ hashFiles('composer.json') }}
@@ -90,7 +90,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/composer
           key: composer-phan-${{ hashFiles('composer.json') }}
@@ -118,7 +118,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/composer
           key: composer-8.4-${{ hashFiles('composer.json') }}
@@ -164,7 +164,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/composer
           key: composer-8.4-${{ hashFiles('composer.json') }}
@@ -192,7 +192,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/composer
           key: composer-8.4-${{ hashFiles('composer.json') }}
@@ -230,7 +230,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/composer
           key: composer-benchmarks-${{ hashFiles('benchmarks/composer.json') }}
@@ -260,7 +260,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/composer
           key: composer-benchmarks-${{ hashFiles('benchmarks/composer.json') }}
@@ -290,7 +290,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/composer
           key: composer-benchmarks-${{ hashFiles('benchmarks/composer.json') }}
