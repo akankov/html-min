@@ -30,7 +30,7 @@
   },
   "require-dev": {
     "friendsofphp/php-cs-fixer": "^3.65",
-    "infection/infection": "^0.34",
+    "infection/infection": "^0.34 || ^0.35",
     "nyholm/psr7": "^1.8",
     "phan/phan": "^6.0",
     "phpstan/phpstan": "^2.1",
